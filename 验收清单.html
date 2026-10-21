@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>浏览器人工验收清单</title><style>body{font-family:-apple-system,PingFang SC,sans-serif;background:#0F1216;color:#E8EAED;max-width:860px;margin:0 auto;padding:40px 24px;line-height:1.7}h1{color:#60A5FA;font-size:24px}h2{color:#E8EAED;border-bottom:1px solid #3A4048;padding-bottom:8px;margin-top:36px}blockquote{background:rgba(59,130,246,0.1);border-left:3px solid #2563EB;padding:10px 16px;border-radius:0 8px 8px 0;color:#9AA0A6;font-size:14px}table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px}td{border:1px solid #262B31;padding:8px 10px;vertical-align:top}table.head td{background:#1B1F25;color:#60A5FA;font-weight:600}tr:nth-child(even) td{background:rgba(255,255,255,0.02)}hr{border:none;border-top:1px solid #3A4048;margin:28px 0}b{color:#E8EAED}</style></head><body><h1>浏览器人工验收清单</h1>
+
+&gt; 使用方法：在浏览器打开 `index.html`，按顺序逐条点验。每条勾选 ☐→☑，发现异常记到文末"问题记录"。
+&gt; 预计耗时 5–8 分钟。首次加载字体约 8MB，稍等属正常。
+
+<h2>一、门户页 index.html</h2>
+
+<table class="head"><tr><td>#</td><td>操作</td><td>预期</td></tr>
+<tr><td>---</td><td>------</td><td>------</td></tr>
+<tr><td>1</td><td>打开 index.html</td><td>深色主题，两张卡片上方各有一块<b>实时旋转的 3D 预览</b>（左："3D"蓝色立体字；右：黄色小鸭子）</td></tr>
+<tr><td>2</td><td>等 3~5 秒观察文字卡</td><td>"3D"立体字从方块/空白变为带倒角的立体字（字体 CDN 加载完成；若网络慢显示方块属降级设计）</td></tr>
+<tr><td>3</td><td>鼠标悬停卡片 / 点击</td><td>边框变蓝、卡片上浮；点击正确跳转到 text3d.html / viewer.html</td></tr>
+</table>
+<h2>二、文字转 3D text3d.html</h2>
+
+<table class="head"><tr><td>#</td><td>操作</td><td>预期</td></tr>
+<tr><td>---</td><td>------</td><td>------</td></tr>
+<tr><td>4</td><td>首次进入</td><td>深色界面，"GLM"三字母生成蓝色立体字（首次字体下载稍慢，之后秒开）</td></tr>
+<tr><td>5</td><td>输入「点 电 是」</td><td>三个字的口/曰/日<b>内部镂空</b>（能看到背景），不再实心</td></tr>
+<tr><td>6</td><td>弯曲弧度滑杆拉到 180°</td><td>文字变成半环（拱形），拉回 0 恢复</td></tr>
+<tr><td>7</td><td>点「试试示例 · 金属刻字效果」</td><td>文字变「3D 打印」，金色金属质感，倒角高光</td></tr>
+<tr><td>8</td><td>材质预设四键切换</td><td>原始(蓝)/金属(金)/霓虹(青发光)/石材(灰糙)即时切换</td></tr>
+<tr><td>9</td><td>「导出旋转动画」WebM 4s</td><td>下载 .webm，播放为匀速旋转一圈，录完模型角度无变化</td></tr>
+<tr><td>10</td><td>「导出旋转动画」GIF 480px</td><td>下载 .gif，循环播放<b>无缝</b>（首尾衔接无跳动）</td></tr>
+<tr><td>11</td><td>导出 GLB / STL / PNG 截图</td><td>各得一个文件；PNG 为深色底 2 倍分辨率</td></tr>
+<tr><td>12</td><td>左上角房子图标</td><td>返回门户页</td></tr>
+</table>
+<h2>三、3D 查看器 viewer.html</h2>
+
+<table class="head"><tr><td>#</td><td>操作</td><td>预期</td></tr>
+<tr><td>---</td><td>------</td><td>------</td></tr>
+<tr><td>13</td><td>点「🦆 示例 · 小鸭子」</td><td>立即出现黄色小鸭（无需网络），自动旋转，<b>脚下有软阴影</b></td></tr>
+<tr><td>14</td><td>点「🤖 示例 · 跳舞机器人」</td><td>机器人出现并自动跳舞；动画面板可选片/暂停/0.5x~2x 倍速/拖进度条</td></tr>
+<tr><td>15</td><td>空格 / F / G / W / R 键</td><td>空格=播放暂停，F=适配视图，G=网格开关，W=线框，R=复位</td></tr>
+<tr><td>16</td><td>灯光预设三档 + 曝光 + FOV</td><td>摄影棚/柔光/暗室明显变光；曝光变亮暗；FOV 变广窄</td></tr>
+<tr><td>17</td><td>背景色 4 圆点 + 拾色器</td><td>视口背景即时切换（默认深灰）</td></tr>
+<tr><td>18</td><td>拖入 duck.glb</td><td>统计面板显示 6.9K 三角面/11 网格/3 材质；文件信息含体积</td></tr>
+<tr><td>19</td><td>双击鸭子身体</td><td>相机焦点移到点击处（局部检查）</td></tr>
+<tr><td>20</td><td>转换面板选 STL</td><td>出现橙色警告「将丢失全部材质与贴图」；点导出得到 .stl</td></tr>
+<tr><td>21</td><td>拖入不支持的文件（如 .txt）</td><td>toast 提示「未找到模型主文件」，页面不崩溃</td></tr>
+<tr><td>22</td><td>左上角房子图标</td><td>返回门户页</td></tr>
+</table>
+<h2>四、异常路径（可选，DevTools → Network → Offline）</h2>
+
+<table class="head"><tr><td>#</td><td>操作</td><td>预期</td></tr>
+<tr><td>---</td><td>------</td><td>------</td></tr>
+<tr><td>23</td><td>断网后刷新 text3d.html</td><td>字体走 IndexedDB 缓存仍能生成；全新浏览器无缓存时提示「请检查网络」</td></tr>
+<tr><td>24</td><td>断网后刷新 viewer.html 打开示例</td><td>示例按钮<b>完全离线可用</b>（程序化生成）</td></tr>
+</table>
+<hr/>
+
+<h2>问题记录</h2>
+
+<table class="head"><tr><td>#</td><td>现象</td><td>页面</td><td>备注</td></tr>
+<tr><td>---</td><td>------</td><td>------</td><td>------</td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+</table>
+<b>全部通过后</b> → 进入批次 D（CDN 双源 + SEO + GitHub Pages 上线）。</body></html>

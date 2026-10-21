@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="在线文字转 3D 工具：输入中英文实时生成立体文字模型，支持挤出深度、倒角、弯曲弧度、金属霓虹材质，导出 GLB/STL/OBJ 用于 3D 打印与网页展示，SVG 图形转 3D，旋转动画 GIF/视频导出。">
+<meta property="og:title" content="文字转 3D · 立体文字生成器">
+<meta property="og:description" content="输入文字实时生成 3D 模型：挤出/倒角/弯曲/材质全参数可调，导出 GLB/STL/OBJ 直接 3D 打印。">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0F1216">
+<title>TEXT → 3D · 立体文字生成器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1216;
+    --border:rgba(255,255,255,0.09); --border-strong:rgba(255,255,255,0.18);
+    --text:#E8EAED; --text-dim:#9AA0A6; --text-faint:#666C74;
+    --accent:#2563EB; --accent-2:#3B82F6; --accent-glow:rgba(37,99,235,0.25);
+    --good:#059669; --warn:#D97706;
+    --radius-sm:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;letter-spacing:-0.01em;-webkit-font-smoothing:antialiased}
+  .app{position:relative;z-index:1;display:grid;grid-template-columns:340px 1fr;height:100vh}
+
+  .sidebar{position:relative;background:#15181D;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+  .sidebar::-webkit-scrollbar{width:6px}
+  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:3px}
+  .sidebar::-webkit-scrollbar-track{background:transparent}
+
+  .brand{padding:22px 22px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+  .brand-mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#2563EB,#3B82F6);display:grid;place-items:center;box-shadow:0 0 0 1px rgba(255,255,255,0.4) inset,0 4px 12px -4px var(--accent-glow);position:relative;overflow:hidden}
+  .brand-mark svg{width:18px;height:18px}
+  .brand-mark::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,0.35) 50%,transparent 70%);transform:translateX(-120%);animation:shimmer 4.5s ease-in-out infinite}
+  @keyframes shimmer{0%,100%{transform:translateX(-120%)}50%{transform:translateX(120%)}}
+  .brand-text h1{font-size:15px;font-weight:600;letter-spacing:-0.02em;color:var(--text)}
+  .brand-text p{font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;letter-spacing:0.04em;margin-top:2px}
+  .brand-reset{margin-left:auto;width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:#1B1F25;color:var(--text-dim);cursor:pointer;display:grid;place-items:center;transition:all .18s ease;flex-shrink:0}
+  .brand-reset:hover{border-color:var(--border-strong);color:var(--accent);background:#22262D}
+  .brand-reset:active{transform:scale(0.95)}
+  .brand-reset svg{width:14px;height:14px}
+
+  .panel{padding:18px 22px;border-bottom:1px solid var(--border)}
+  .panel-title{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:var(--text-faint);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .panel-title::before{content:"";width:3px;height:3px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent-glow)}
+
+  .field{margin-bottom:14px}
+  .field:last-child{margin-bottom:0}
+  .field-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+  .field-label span:first-child{font-size:12px;color:var(--text-dim);font-weight:500}
+  .field-label .val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:5px;border:1px solid var(--border)}
+
+  .text-input{width:100%;background:#1B1F25;border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 12px;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s,box-shadow .2s;resize:vertical;min-height:46px;line-height:1.4}
+  .text-input:focus{border-color:rgba(37,99,235,0.55);box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+  .dim-info{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-faint);margin-top:6px;line-height:1.5}
+  .svg-import-row{display:flex;gap:6px}
+  .svg-mode-info{margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(59,130,246,0.14);border:1px solid rgba(59,130,246,0.35);color:var(--accent);font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:8px}
+
+  .select-wrap{position:relative}
+  .select{width:100%;appearance:none;-webkit-appearance:none;background:#1B1F25;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 32px 10px 12px;color:var(--text);font-size:13px;cursor:pointer;outline:none;transition:border-color .2s}
+  .select:hover{border-color:var(--border-strong)}
+  .select:focus{border-color:rgba(37,99,235,0.55)}
+  .select-wrap::after{content:"";position:absolute;right:12px;top:50%;width:8px;height:8px;border-right:1.5px solid var(--text-dim);border-bottom:1.5px solid var(--text-dim);transform:translateY(-65%) rotate(45deg);pointer-events:none}
+
+  .slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:linear-gradient(90deg,var(--accent) 0%,var(--accent) var(--p,50%),rgba(255,255,255,0.14) var(--p,50%));border-radius:2px;outline:none;cursor:pointer}
+  .slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:#E8EAED;border:2px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,0.15);transition:box-shadow .2s,transform .15s}
+  .slider::-webkit-slider-thumb:hover{box-shadow:0 0 0 5px rgba(37,99,235,0.12),0 1px 4px rgba(0,0,0,0.15);transform:scale(1.08)}
+  .slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#E8EAED;border:2px solid var(--accent);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.15)}
+
+  .color-row{display:flex;align-items:center;gap:10px}
+  .color-swatch{width:38px;height:38px;border-radius:10px;border:1px solid var(--border-strong);cursor:pointer;position:relative;overflow:hidden;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.1)}
+  .color-swatch input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .color-hex{flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-dim)}
+  .preset-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .preset{width:20px;height:20px;border-radius:6px;border:1px solid var(--border);cursor:pointer;transition:transform .15s,border-color .15s}
+  .preset:hover{transform:scale(1.15);border-color:var(--border-strong)}
+
+  .toggle-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0}
+  .toggle-row .lbl{font-size:12px;color:var(--text-dim)}
+  .mat-preset-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .mat-preset{appearance:none;border:1px solid var(--border);background:#1B1F25;color:var(--text-dim);padding:7px 4px;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;transition:all .18s ease;font-family:inherit;white-space:nowrap}
+  .mat-preset:hover{border-color:var(--border-strong);color:var(--text);background:#22262D}
+  .mat-preset:active{transform:scale(0.97)}
+  .mat-preset.active{border-color:var(--accent);color:var(--accent);background:rgba(59,130,246,0.16)}
+  .toggle{position:relative;width:36px;height:20px;cursor:pointer}
+  .toggle input{position:absolute;opacity:0}
+  .toggle .track{position:absolute;inset:0;background:rgba(255,255,255,0.14);border-radius:10px;border:1px solid var(--border);transition:background .2s}
+  .toggle .thumb{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#E8EAED;box-shadow:0 1px 3px rgba(0,0,0,0.4);transition:transform .2s ease}
+  .toggle input:checked + .track{background:var(--accent);border-color:transparent}
+  .toggle input:checked + .track + .thumb{transform:translateX(16px)}
+
+  .export-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .btn{appearance:none;border:1px solid var(--border);background:#1B1F25;color:var(--text);padding:10px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .18s ease;letter-spacing:-0.01em;font-family:inherit}
+  .btn:hover{border-color:var(--border-strong);background:#22262D;transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn svg{width:14px;height:14px}
+  .btn-accent{background:var(--accent);border-color:transparent;color:#fff;box-shadow:0 4px 14px -4px var(--accent-glow)}
+  .btn-accent:hover{background:#1D4ED8;border-color:transparent;box-shadow:0 8px 20px -6px var(--accent-glow);transform:translateY(-1px)}
+  .btn-full{grid-column:1/-1}
+
+  .pill-row{display:flex;gap:6px;margin-top:8px}
+  .pill{flex:1;appearance:none;border:1px solid var(--border);background:#1B1F25;color:var(--text-dim);padding:7px 4px;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;transition:all .18s ease;font-family:inherit;white-space:nowrap}
+  .pill:hover{border-color:var(--border-strong);color:var(--text)}
+  .pill:active{transform:scale(.97)}
+  .pill.active{border-color:var(--accent);color:var(--accent);background:rgba(59,130,246,0.16)}
+  .pill:disabled{opacity:.45;cursor:not-allowed}
+  .prog{height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;margin-top:10px;opacity:0;transition:opacity .25s}
+  .prog.show{opacity:1}
+  .prog>div{height:100%;width:0;background:var(--accent);transition:width .2s}
+
+  .main{position:relative;overflow:hidden}
+  #canvas{display:block;width:100%;height:100%}
+  .topbar{position:absolute;top:0;left:0;right:0;height:52px;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:linear-gradient(180deg,rgba(15,18,22,0.8),transparent);pointer-events:none}
+  .topbar > *{pointer-events:auto}
+  .crumb{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint);letter-spacing:0.06em}
+  .crumb b{color:var(--text-dim);font-weight:500}
+  .status{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;background:rgba(21,24,29,0.9);border:1px solid var(--border);padding:6px 11px;border-radius:8px;backdrop-filter:blur(8px)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 6px rgba(5,150,105,0.5)}
+  .dot.busy{background:var(--warn);box-shadow:0 0 6px rgba(217,119,6,0.5);animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  .vp-controls{position:absolute;bottom:18px;right:18px;z-index:10;display:flex;gap:6px;background:rgba(21,24,29,0.92);border:1px solid var(--border);padding:6px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.04)}
+  .vp-btn{width:34px;height:34px;border-radius:8px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;display:grid;place-items:center;transition:background .15s,color .15s}
+  .vp-btn:hover{background:rgba(255,255,255,0.08);color:var(--text)}
+  .vp-btn svg{width:16px;height:16px}
+  .hint{position:absolute;bottom:18px;left:18px;z-index:10;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-faint);background:rgba(21,24,29,0.9);border:1px solid var(--border);padding:7px 11px;border-radius:8px;backdrop-filter:blur(8px);letter-spacing:0.04em}
+  .hint kbd{background:rgba(255,255,255,0.07);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--text-dim);margin:0 2px}
+
+  .loader{position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:rgba(15,18,22,0.75);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+  .loader.show{opacity:1;pointer-events:auto}
+  .loader-box{text-align:center}
+  .loader-ring{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,0.1);border-top-color:var(--accent);margin:0 auto 10px;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loader-text{font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;letter-spacing:0.06em}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(27,31,37,0.97);border:1px solid var(--border-strong);color:var(--text);padding:10px 16px;border-radius:10px;font-size:12.5px;backdrop-filter:blur(12px);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;display:flex;align-items:center;gap:9px;box-shadow:0 10px 40px -10px rgba(0,0,0,0.2)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast .ti{width:16px;height:16px;color:var(--good)}
+
+  .code-modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(15,18,25,0.5);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .2s}
+  .code-modal.show{opacity:1;pointer-events:auto}
+  .code-box{width:min(720px,92vw);max-height:82vh;display:flex;flex-direction:column;background:#1B1F25;border:1px solid var(--border-strong);border-radius:14px;box-shadow:0 24px 80px -20px rgba(0,0,0,0.35);overflow:hidden}
+  .code-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+  .code-head h3{font-size:13px;font-weight:600}
+  .code-head span{font-size:11px;color:var(--text-faint);font-family:'JetBrains Mono',monospace}
+  .code-close{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:#1B1F25;color:var(--text-dim);cursor:pointer;display:grid;place-items:center;transition:all .15s}
+  .code-close:hover{color:var(--text);border-color:var(--border-strong)}
+  .code-box textarea{flex:1;width:100%;border:none;outline:none;resize:none;padding:16px 18px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6;color:#C9CDD3;background:#12151A;min-height:300px}
+
+  .cdn-fail{position:fixed;inset:0;z-index:100;display:none;place-items:center;background:var(--bg)}
+  .cdn-fail-box{text-align:center;padding:44px 56px;border:2px dashed #3A4048;border-radius:18px;background:#15181D}
+  .cdn-fail-box svg{width:44px;height:44px;color:var(--warn);margin-bottom:16px}
+  .cdn-fail-box h3{font-size:15px;font-weight:600;margin-bottom:8px;color:var(--text)}
+  .cdn-fail-box p{font-size:12px;color:var(--text-dim);line-height:1.7}
+  .code-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+
+  @media (max-width:860px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr}.sidebar{max-height:46vh;border-right:none;border-bottom:1px solid var(--border)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></div>
+      <div class="brand-text"><h1>TEXT → 3D</h1><p>立体文字生成器</p></div>
+      <a class="brand-reset" href="./index.html" title="返回首页" style="text-decoration:none;display:grid;place-items:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></a>
+      <button class="brand-reset" id="resetBtn" title="恢复默认参数（保留文字内容）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">文字内容</div>
+      <div class="field">
+        <div class="svg-import-row">
+          <button class="btn" id="svgImportBtn" style="flex:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>导入 SVG（Logo 转 3D）</button>
+          <button class="btn" id="svgClearBtn" title="退出 SVG 模式" style="display:none;padding:10px 12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <input type="file" id="svgFileInput" accept=".svg,image/svg+xml" style="display:none" />
+        <div class="svg-mode-info" id="svgModeInfo" style="display:none"></div>
+      </div>
+      <div class="field">
+        <textarea id="textInput" class="text-input" rows="2" maxlength="64" placeholder="输入文字，支持中英文，回车换行">GLM</textarea>
+        <button class="btn" id="demoTextBtn" style="width:100%;margin-top:8px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>试试示例 · 金属刻字效果</button>
+      </div>
+      <div class="field">
+        <div class="field-label"><span>字体</span><span class="val" id="fontStatus">思源黑体</span></div>
+        <div class="select-wrap">
+          <select id="fontSelect" class="select">
+            <option value="sans">思源黑体 · 无衬线 (中英文)</option>
+            <option value="sans-bold">思源黑体 Bold · 粗体</option>
+            <option value="serif">思源宋体 · 衬线 (中英文)</option>
+            <option value="serif-bold">思源宋体 Bold · 粗衬线</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label"><span>字号</span><span class="val" id="sizeVal">1.0</span></div>
+        <input id="sizeSlider" class="slider" type="range" min="0.3" max="3" step="0.05" value="1" />
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">几何参数</div>
+      <div class="field"><div class="field-label"><span>挤出深度</span><span class="val" id="depthVal">0.30</span></div><input id="depthSlider" class="slider" type="range" min="0.02" max="2" step="0.02" value="0.3" /></div>
+      <div class="field"><div class="field-label"><span>倒角大小</span><span class="val" id="bevelVal">0.000</span></div><input id="bevelSlider" class="slider" type="range" min="0" max="0.3" step="0.005" value="0" /></div>
+      <div class="field"><div class="field-label"><span>倒角段数</span><span class="val" id="bevelSegVal">4</span></div><input id="bevelSegSlider" class="slider" type="range" min="1" max="12" step="1" value="4" /></div>
+      <div class="field"><div class="field-label"><span>弯曲弧度</span><span class="val" id="bendVal">0°</span></div><input id="bendSlider" class="slider" type="range" min="-180" max="180" step="5" value="0" /><div class="dim-info">正=拱起 · 负=内凹 · ±180° 成半环（戒指刻字）</div></div>
+      <div class="field"><div class="field-label"><span>曲线精度</span><span class="val" id="curveSegVal">12</span></div><input id="curveSegSlider" class="slider" type="range" min="1" max="32" step="1" value="12" /></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">材质外观</div>
+      <div class="field">
+        <div class="mat-preset-row">
+          <button class="mat-preset" data-preset="original">原始</button>
+          <button class="mat-preset" data-preset="metal">金属刻字</button>
+          <button class="mat-preset" data-preset="neon">霓虹灯牌</button>
+          <button class="mat-preset" data-preset="stone">石材雕刻</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label"><span>颜色</span><span class="val" id="colorHex">#2563EB</span></div>
+        <div class="color-row"><label class="color-swatch" id="colorSwatch" style="background:#2563EB"><input id="colorInput" type="color" value="#2563EB" /></label><div class="color-hex">主色 · 点击修改</div></div>
+        <div class="preset-row" id="presets"></div>
+      </div>
+      <div class="field"><div class="field-label"><span>金属度</span><span class="val" id="metalVal">0.00</span></div><input id="metalSlider" class="slider" type="range" min="0" max="1" step="0.01" value="0" /></div>
+      <div class="field"><div class="field-label"><span>粗糙度</span><span class="val" id="roughVal">0.50</span></div><input id="roughSlider" class="slider" type="range" min="0" max="1" step="0.01" value="0.5" /></div>
+      <div class="field"><div class="field-label"><span>自发光强度</span><span class="val" id="emitVal">0.00</span></div><input id="emitSlider" class="slider" type="range" min="0" max="1" step="0.01" value="0" /></div>
+      <div class="field"><div class="toggle-row"><span class="lbl">线框模式</span><label class="toggle"><input id="wireToggle" type="checkbox"><span class="track"></span><span class="thumb"></span></label></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">场景设置</div>
+      <div class="field"><div class="toggle-row"><span class="lbl">显示地面网格</span><label class="toggle"><input id="gridToggle" type="checkbox"><span class="track"></span><span class="thumb"></span></label></div></div>
+      <div class="field"><div class="toggle-row"><span class="lbl">自动旋转</span><label class="toggle"><input id="autoRotateToggle" type="checkbox"><span class="track"></span><span class="thumb"></span></label></div></div>
+      <div class="field"><div class="field-label"><span>环境强度</span><span class="val" id="envVal">1.0</span></div><input id="envSlider" class="slider" type="range" min="0" max="3" step="0.05" value="1" /></div>
+    </div>
+
+    <div class="panel" style="border-bottom:none">
+      <div class="panel-title">导出 / 截图</div>
+      <div class="field">
+        <div class="field-label"><span>目标宽度 (mm)</span><span class="val" id="mmHint">3D 打印</span></div>
+        <input id="mmInput" class="text-input" type="number" min="5" max="500" step="1" value="100" style="font-family:'JetBrains Mono',monospace" />
+        <div class="dim-info" id="dimInfo">—</div>
+      </div>
+      <div class="export-grid">
+        <button class="btn btn-accent btn-full" id="exportGlb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出 GLB</button>
+        <button class="btn" id="exportStl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>STL</button>
+        <button class="btn" id="exportObj"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>OBJ</button>
+        <button class="btn btn-full" id="exportPng"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>高清截图 PNG (2x)</button>
+        <button class="btn btn-full" id="exportCode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>复制网页嵌入代码</button>
+      </div>
+
+      <div class="field" style="margin-top:16px">
+        <div class="field-label"><span>旋转动画 · 时长</span><span class="val" id="animDurVal">4s</span></div>
+        <input id="animDurSlider" class="slider" type="range" min="2" max="6" step="1" value="4" />
+        <div class="pill-row" id="animFmtRow">
+          <button type="button" class="pill active" data-fmt="webm">WebM 视频</button>
+          <button type="button" class="pill" data-fmt="gif">GIF 动图</button>
+        </div>
+        <div class="pill-row" id="animGifWRow" style="display:none">
+          <button type="button" class="pill" data-w="320">320px</button>
+          <button type="button" class="pill active" data-w="480">480px</button>
+          <button type="button" class="pill" data-w="640">640px</button>
+        </div>
+        <div class="pill-row" id="animDirRow">
+          <button type="button" class="pill active" data-dir="1">顺时针</button>
+          <button type="button" class="pill" data-dir="-1">逆时针</button>
+        </div>
+        <button type="button" class="btn btn-full" id="exportAnim" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>导出旋转动画</button>
+        <div class="prog" id="animProg"><div></div></div>
+        <div class="dim-info" id="animInfo" style="text-align:center;min-height:14px"></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <canvas id="canvas"></canvas>
+    <div class="topbar"><div class="crumb">workspace <b>/</b> text-to-3d <b>/</b> viewport</div><div class="status"><span class="dot" id="statusDot"></span><span id="statusText">就绪</span></div></div>
+    <div class="hint"><kbd>拖动</kbd>旋转 <kbd>滚轮</kbd>缩放 <kbd>右键</kbd>平移</div>
+    <div class="vp-controls">
+      <button class="vp-btn" id="vpReset" title="重置视角"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+      <button class="vp-btn" id="vpFront" title="正视图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+      <button class="vp-btn" id="vpTop" title="顶视图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/></svg></button>
+      <button class="vp-btn" id="vpFit" title="适配视图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+    </div>
+    <div class="loader" id="loader"><div class="loader-box"><div class="loader-ring"></div><div class="loader-text" id="loaderText">加载字体中…</div></div></div>
+  </main>
+</div>
+
+<div class="toast" id="toast"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span id="toastText">已导出</span></div>
+
+<div class="cdn-fail" id="cdn-fail">
+  <div class="cdn-fail-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <h3>无法加载 3D 引擎</h3>
+    <p>所有 CDN 源均不可达（jsdelivr / fastly / unpkg）<br/>请检查网络连接后刷新重试</p>
+  </div>
+</div>
+
+<div class="code-modal" id="codeModal">
+  <div class="code-box">
+    <div class="code-head">
+      <h3>网页嵌入代码</h3>
+      <span id="codeMeta">three.js</span>
+      <button class="code-close" id="codeClose" title="关闭"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <textarea id="codeArea" readonly spellcheck="false"></textarea>
+    <div class="code-foot"><button class="btn btn-accent" id="codeCopy">复制全部</button></div>
+  </div>
+</div>
+
+<script>
+/* CDN 容灾引导：jsdelivr → fastly 镜像 → unpkg 逐源探测，选中后注入 importmap 再执行主代码 */
+(function(){
+  window.__CDN_BASES = [
+    'https://cdn.jsdelivr.net/npm/three@0.160.0',
+    'https://fastly.jsdelivr.net/npm/three@0.160.0',
+    'https://unpkg.com/three@0.160.0'
+  ];
+  function cdnFail(){
+    var el = document.getElementById('cdn-fail');
+    if(el) el.style.display = 'grid';
+    var st = document.getElementById('statusText');
+    if(st) st.textContent = 'CDN 不可达';
+  }
+  function boot(base){
+    window.__CDN_OK = base;
+    var im = document.createElement('script');
+    im.type = 'importmap';
+    im.textContent = JSON.stringify({ imports: {
+      'three': base + '/build/three.module.js',
+      'three/addons/': base + '/examples/jsm/'
+    } });
+    document.head.appendChild(im);
+    var s = document.createElement('script');
+    s.type = 'module';
+    s.textContent = document.getElementById('app-code').textContent;
+    document.body.appendChild(s);
+  }
+  (async function(){
+    for(var i = 0; i < window.__CDN_BASES.length; i++){
+      try{ await import(window.__CDN_BASES[i] + '/build/three.module.js'); boot(window.__CDN_BASES[i]); return; }
+      catch(e){ console.warn('CDN 不可达，尝试下一源：', window.__CDN_BASES[i]); }
+    }
+    cdnFail();
+  })();
+})();
+</script>
+<script type="text/plain" id="app-code">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+const OPENTYPE_URLS = [
+  'https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.module.js',
+  'https://fastly.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.module.js',
+  'https://unpkg.com/opentype.js@1.3.4/dist/opentype.module.js'
+];
+let opentype = null;
+for(const _u of OPENTYPE_URLS){ try{ opentype = (await import(_u)).default; break; }catch(e){ console.warn('opentype 源不可达：', _u); } }
+if(!opentype){ document.getElementById('cdn-fail').style.display = 'grid'; throw new Error('opentype.js 全源加载失败'); }
+
+/* ---------- 字体 ---------- */
+const FONT_BASE = 'https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/';
+const FONTS = {
+  'sans':       { name:'思源黑体',      url: FONT_BASE + 'Sans/SubsetOTF/SC/NotoSansSC-Regular.otf' },
+  'sans-bold':  { name:'思源黑体 Bold', url: FONT_BASE + 'Sans/SubsetOTF/SC/NotoSansSC-Bold.otf' },
+  'serif':      { name:'思源宋体',      url: FONT_BASE + 'Serif/SubsetOTF/SC/NotoSerifSC-Regular.otf' },
+  'serif-bold': { name:'思源宋体 Bold', url: FONT_BASE + 'Serif/SubsetOTF/SC/NotoSerifSC-Bold.otf' },
+};
+
+/* ---------- 状态（默认为最基础的原始状态，参数由用户自行调整） ---------- */
+const state = {
+  text:'GLM', fontKey:'sans', size:1.0,
+  depth:0.3, bevel:0, bevelSeg:4, curveSeg:12, bendDeg:0,
+  color:'#2563EB', metalness:0, roughness:0.5, emissive:0, wireframe:false,
+  grid:false, autoRotate:false, envIntensity:1.0,
+  svgShapes:null, svgName:'',
+};
+const fontCache = {};
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const canvas = $('canvas'), loader = $('loader'), loaderText = $('loaderText');
+const statusDot = $('statusDot'), statusText = $('statusText');
+const toast = $('toast'), toastText = $('toastText');
+
+/* ---------- Three.js ---------- */
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, preserveDrawingBuffer:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x15181D);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+camera.position.set(0, 1.2, 6);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 1.5; controls.maxDistance = 40;
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+/* 中性白光照明 */
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.2); keyLight.position.set(4,6,5); scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.4); fillLight.position.set(-5,2,-3); scene.add(fillLight);
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+
+const gridGroup = new THREE.Group(); scene.add(gridGroup);
+(function buildGrid(){
+  const g = new THREE.GridHelper(40, 40, 0x3A4048, 0x262B31);
+  g.material.transparent = true; g.material.opacity = 0.9; g.position.y = -1.5; gridGroup.add(g);
+})();
+gridGroup.visible = state.grid;
+
+const textGroup = new THREE.Group(); scene.add(textGroup);
+let textMaterial = null;
+
+/* ---------- 工具 ---------- */
+function setStatus(busy, text){ statusDot.classList.toggle('busy', busy); statusText.textContent = text; }
+function showLoader(show, text){ loader.classList.toggle('show', show); if(text) loaderText.textContent = text; }
+function showToast(msg){ toastText.textContent = msg; toast.classList.add('show'); clearTimeout(showToast._t); showToast._t = setTimeout(()=>toast.classList.remove('show'), 2200); }
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; }
+
+/* ---------- IndexedDB 字体缓存 ---------- */
+const FONT_DB = 'text3d-fonts';
+const FONT_STORE = 'fonts';
+function idbOpen(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(FONT_DB, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(FONT_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbGet(key){
+  try{
+    const db = await idbOpen();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(FONT_STORE, 'readonly').objectStore(FONT_STORE).get(key);
+      tx.onsuccess = () => resolve(tx.result ?? null);
+      tx.onerror = () => reject(tx.error);
+    });
+  }catch(e){ return null; }
+}
+async function idbPut(key, value){
+  try{
+    const db = await idbOpen();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(FONT_STORE, 'readwrite').objectStore(FONT_STORE).put(value, key);
+      tx.onsuccess = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }catch(e){ /* 缓存写入失败不影响主流程 */ }
+}
+
+/* ---------- 字体加载：内存 → IndexedDB → CDN（jsdelivr 失败自动切 fastly 镜像），再回退本地（返回 Uint8Array） ---------- */
+async function fetchFontWithMirror(url){
+  const urls = [url];
+  if(url.includes('//cdn.jsdelivr.net/')) urls.push(url.replace('//cdn.jsdelivr.net/', '//fastly.jsdelivr.net/'));
+  let lastErr = null;
+  for(const u of urls){
+    try{
+      const res = await fetch(u);
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res;
+    }catch(e){ lastErr = e; console.warn('字体源不可达，尝试镜像：', u); }
+  }
+  throw lastErr;
+}
+async function loadFont(url){
+  if(fontCache[url]) return fontCache[url];
+
+  const cached = await idbGet(url);
+  if(cached instanceof Uint8Array){
+    showLoader(true, '读取本地缓存…');
+    fontCache[url] = cached;
+    showLoader(false);
+    return cached;
+  }
+
+  let buf;
+  try{
+    const res = await fetchFontWithMirror(url);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const total = +res.headers.get('Content-Length') || 0;
+    const reader = res.body.getReader();
+    let received = 0; const chunks = [];
+    for(;;){ const { done, value } = await reader.read(); if(done) break; chunks.push(value); received += value.length; if(total) showLoader(true, `加载字体 ${Math.round(received/total*100)}%`); }
+    showLoader(true, '解析字体中…');
+    buf = new Uint8Array(received); let off = 0; for(const c of chunks){ buf.set(c, off); off += c.length; }
+    idbPut(url, buf);
+  }catch(e){
+    const fallback = cached ?? (await idbGet(url));
+    if(fallback instanceof Uint8Array){
+      fontCache[url] = fallback;
+      showToast('网络不可用，已使用本地缓存字体');
+      return fallback;
+    }
+    throw e;
+  }
+
+  fontCache[url] = buf;
+  return buf;
+}
+
+/* ---------- 几何核心：glyph → 轮廓点集（纯数据，Worker/主线程共用） ----------
+   opentype 使用 SVG 坐标系（Y 轴向下），Three.js Y 轴向上，
+   因此所有点的 y 坐标取反（此前文字颠倒的原因即在此）。
+   注意：此函数会被 toString() 序列化注入 Worker，内部不允许引用外部变量。 */
+function glyphLinesCore(font, text, curveSeg){
+  const FONT_SIZE = 100;
+  function signedArea(pts){
+    let a = 0;
+    for(let p = pts.length-1, q = 0; q < pts.length; p = q++) a += pts[p][0]*pts[q][1] - pts[q][0]*pts[p][1];
+    return a * 0.5;
+  }
+  function quad(p0, c1, p1, t){ const u = 1-t; return [ u*u*p0[0] + 2*u*t*c1[0] + t*t*p1[0], u*u*p0[1] + 2*u*t*c1[1] + t*t*p1[1] ]; }
+  function cube(p0, c1, c2, p1, t){ const u = 1-t; return [ u*u*u*p0[0] + 3*u*u*t*c1[0] + 3*u*t*t*c2[0] + t*t*t*p1[0], u*u*u*p0[1] + 3*u*u*t*c1[1] + 3*u*t*t*c2[1] + t*t*t*p1[1] ]; }
+
+  function pathToContours(op, steps){
+    const contours = [];
+    let pts = null;
+    const pushPt = p => pts.push([p.x, -p.y]);
+    for(const cmd of op.commands){
+      if(cmd.type === 'M'){ pts = []; pushPt(cmd); contours.push(pts); }
+      else if(!pts) continue;
+      else if(cmd.type === 'L') pushPt(cmd);
+      else if(cmd.type === 'Q'){ const p0 = pts[pts.length-1]; for(let i=1;i<=steps;i++){ const t=i/steps; pts.push(quad(p0,[cmd.x1,-cmd.y1],[cmd.x,-cmd.y],t)); } }
+      else if(cmd.type === 'C'){ const p0 = pts[pts.length-1]; for(let i=1;i<=steps;i++){ const t=i/steps; pts.push(cube(p0,[cmd.x1,-cmd.y1],[cmd.x2,-cmd.y2],[cmd.x,-cmd.y],t)); } }
+    }
+    if(!contours.length) return [];
+    let maxAbs = -1, outerCCW = true;
+    const areas = contours.map(c => { const a = signedArea(c); if(Math.abs(a) > maxAbs){ maxAbs = Math.abs(a); outerCCW = a > 0; } return a; });
+    const reverse = !outerCCW;
+    /* CFF 字体（思源黑体）轮廓顺序不保证孔洞跟在宿主外轮廓之后（点/电/是 的孔洞全在外轮廓之前），
+       旧逻辑"挂到最后一个已出现外轮廓"会错挂或丢弃 → 孔洞区域被实体化。
+       两遍处理：先建全部外轮廓；再用顶点射线法把每个孔洞挂到包含它的最小外轮廓（直接宿主，兼容嵌套岛）。 */
+    const ptIn = (pt, poly) => {
+      let inside = false;
+      for(let i = 0, j = poly.length - 1; i < poly.length; j = i++){
+        const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+        if(((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi)) inside = !inside;
+      }
+      return inside;
+    };
+    const shapes = [];
+    const outers = [];
+    for(let i = 0; i < contours.length; i++){
+      const c = contours[i];
+      if(c.length < 3 || (areas[i] > 0) !== outerCCW) continue;
+      outers.push({ idx: shapes.length, area: Math.abs(areas[i]), pts: c });
+      shapes.push({ pts: reverse ? c.slice().reverse() : c, holes: [] });
+    }
+    for(let i = 0; i < contours.length; i++){
+      const c = contours[i];
+      if(c.length < 3 || (areas[i] > 0) === outerCCW) continue;
+      let host = -1, hostArea = Infinity;
+      for(const o of outers){
+        if(Math.abs(areas[i]) < o.area && ptIn(c[0], o.pts) && o.area < hostArea){ hostArea = o.area; host = o.idx; }
+      }
+      if(host >= 0) shapes[host].holes.push(reverse ? c.slice().reverse() : c);
+    }
+    return shapes;
+  }
+
+  const scale = FONT_SIZE / font.unitsPerEm;
+  const lineH = FONT_SIZE * 1.4;
+  const steps = Math.max(4, Math.min(12, curveSeg));
+  const lines = text.split('\n');
+  let missing = 0;
+  const out = [];
+  for(let li = 0; li < lines.length; li++){
+    let x = 0;
+    const lineShapes = [];
+    for(const ch of lines[li]){
+      if(ch === ' ' || ch === '\t'){ x += font.charToGlyph(' ').advanceWidth * scale; continue; }
+      const glyph = font.charToGlyph(ch);
+      if(glyph.index === 0){ missing++; x += glyph.advanceWidth * scale; continue; }
+      lineShapes.push(...pathToContours(glyph.getPath(x, 0, FONT_SIZE), steps));
+      x += glyph.advanceWidth * scale;
+    }
+    out.push({ shapes: lineShapes, yOff: (lines.length - 1) / 2 * lineH - li * lineH });
+  }
+  return { lines: out, missing };
+}
+
+/* ---------- Web Worker：路径展平脱离主线程（Blob 内联，opentype UMD 双源，失败自动降级） ---------- */
+let geometryWorker = null;
+try{
+  const OT_UMD_URLS = JSON.stringify([
+    'https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js',
+    'https://fastly.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js'
+  ]);
+  const WORKER_SRC = `
+let _otOK = false;
+for(const u of ${OT_UMD_URLS}){ try{ importScripts(u); _otOK = true; break; }catch(e){} }
+if(!_otOK) throw new Error('opentype worker 源全不可达');
+const _core = (${glyphLinesCore.toString()});
+self.onmessage = (e) => {
+  const { buf, text, curveSeg } = e.data;
+  try{
+    const font = opentype.parse(buf);
+    self.postMessage({ type: 'ok', ..._core(font, text, curveSeg) });
+  }catch(err){
+    self.postMessage({ type: 'error', message: String(err && err.message || err) });
+  }
+};`;
+  geometryWorker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' })));
+}catch(e){
+  geometryWorker = null;
+}
+
+function runInWorker(buf, text, curveSeg){
+  return new Promise((resolve, reject) => {
+    if(!geometryWorker){ reject(new Error('no worker')); return; }
+    const tm = setTimeout(() => reject(new Error('worker timeout')), 15000);
+    geometryWorker.onmessage = (e) => {
+      clearTimeout(tm);
+      if(e.data.type === 'ok') resolve(e.data);
+      else reject(new Error(e.data.message || 'worker error'));
+    };
+    geometryWorker.onerror = () => { clearTimeout(tm); reject(new Error('worker error')); };
+    const copy = buf.slice(); /* 传副本并 transfer，内存缓存不受影响 */
+    geometryWorker.postMessage({ buf: copy.buffer, text, curveSeg }, [copy.buffer]);
+  });
+}
+
+/* ---------- 生成文字几何 ---------- */
+const FONT_SIZE = 100;
+
+/* 柱面弯曲（标准 Simple-Deform Bend）：
+   R = 宽度/|总弧度|（总为正），s = 弧度符号，φ = x/R，r = R + s·y
+   x' = r·sin(φ)，y' = s·(r·cos(φ) - R)
+   中性层(y=0)弧长守恒；横截面径向厚度精确保持；
+   正角=拱起(Ω 开口朝下)，负角=内凹(U 开口朝上)。 */
+function bendGeometry(geo, deg){
+  if(!deg) return geo;
+  geo.computeBoundingBox();
+  const w = geo.boundingBox.max.x - geo.boundingBox.min.x;
+  const theta = Math.abs(deg) * Math.PI / 180;
+  if(theta < 1e-6 || w < 1e-6) return geo;
+  const R = w / theta;
+  const s = deg > 0 ? 1 : -1;
+  const pos = geo.attributes.position;
+  for(let i = 0; i < pos.count; i++){
+    const x = pos.getX(i), y = pos.getY(i);
+    const phi = x / R;
+    const r = R + s * y;
+    pos.setX(i, r * Math.sin(phi));
+    pos.setY(i, s * (r * Math.cos(phi) - R));
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  geo.computeBoundingBox();
+  return geo;
+}
+
+function clearText(){ for(const m of textGroup.children){ m.geometry.dispose(); } textGroup.clear(); textGroup.position.set(0,0,0); }
+function buildMaterial(){
+  const mat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(state.color),
+    metalness: state.metalness, roughness: state.roughness,
+    envMapIntensity: state.envIntensity, wireframe: state.wireframe,
+  });
+  if(state.emissive > 0){ mat.emissive = new THREE.Color(state.color); mat.emissiveIntensity = state.emissive; }
+  return mat;
+}
+
+let genToken = 0;
+async function regenerate(){
+  const myToken = ++genToken;
+
+  /* ---- SVG 模式：直接用导入的 shapes 挤出，不加载字体 ---- */
+  if(state.svgShapes && state.svgShapes.length){
+    setStatus(true, '生成中…');
+    clearText();
+    if(textMaterial) textMaterial.dispose();
+    textMaterial = buildMaterial();
+    const bevel = Math.max(0, state.bevel);
+    const extrudeDepth = state.depth * FONT_SIZE;
+    const bevelSize = bevel * FONT_SIZE * 0.5;
+    const geo = new THREE.ExtrudeGeometry(state.svgShapes, {
+      depth: extrudeDepth,
+      bevelEnabled: bevel > 0.0001,
+      bevelThickness: bevelSize, bevelSize: bevelSize * 0.85, bevelOffset: 0,
+      bevelSegments: state.bevelSeg, curveSegments: state.curveSeg,
+    });
+    geo.computeBoundingBox();
+    const bb = geo.boundingBox;
+    geo.translate(-(bb.min.x + bb.max.x)/2, -(bb.min.y + bb.max.y)/2, -extrudeDepth/2);
+    bendGeometry(geo, state.bendDeg);
+    textGroup.add(new THREE.Mesh(geo, textMaterial));
+    const box = new THREE.Box3().setFromObject(textGroup);
+    if(!box.isEmpty()){
+      const c = box.getCenter(new THREE.Vector3());
+      textGroup.position.set(-c.x, -c.y, -c.z);
+    }
+    textGroup.scale.setScalar(state.size * 0.01);
+    setStatus(false, `就绪 · SVG（${state.svgName}）`);
+    if(typeof updateDimInfo === 'function') updateDimInfo();
+    return;
+  }
+
+  const txt = state.text;
+  if(!txt.trim()){ clearText(); if(textMaterial){ textMaterial.dispose(); textMaterial = null; } return; }
+
+  setStatus(true, '生成中…');
+  const fontDef = FONTS[state.fontKey];
+  $('fontStatus').textContent = fontDef.name;
+  showLoader(true, '加载字体中…');
+  let buf;
+  try{ buf = await loadFont(fontDef.url); }
+  catch(e){ showLoader(false); setStatus(false, '字体加载失败'); showToast('字体加载失败，请检查网络'); console.error(e); return; }
+  if(myToken !== genToken) return;
+  showLoader(false);
+
+  /* 路径展平在 Worker 中执行（创建失败/超时/出错时降级主线程） */
+  let result;
+  try{
+    try{ result = await runInWorker(buf, txt, state.curveSeg); }
+    catch(werr){
+      result = glyphLinesCore(opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)), txt, state.curveSeg);
+    }
+  }catch(e){ setStatus(false, '生成失败'); showToast('文字生成失败'); console.error(e); return; }
+  if(myToken !== genToken) return;
+
+  clearText();
+  if(textMaterial) textMaterial.dispose();
+  textMaterial = buildMaterial();
+
+  const bevel = Math.max(0, state.bevel);
+  const extrudeDepth = state.depth * FONT_SIZE;
+  const bevelSize = bevel * FONT_SIZE * 0.5;
+  const opts = {
+    depth: extrudeDepth,
+    bevelEnabled: bevel > 0.0001,
+    bevelThickness: bevelSize,
+    bevelSize: bevelSize * 0.85,
+    bevelOffset: 0,
+    bevelSegments: state.bevelSeg,
+    curveSegments: state.curveSeg,
+  };
+  const missing = result.missing;
+
+  for(const line of result.lines){
+    const shapes = [];
+    for(const s of line.shapes){
+      if(s.pts.length < 3) continue;
+      const shape = new THREE.Shape();
+      shape.moveTo(s.pts[0][0], s.pts[0][1]);
+      for(let i = 1; i < s.pts.length; i++) shape.lineTo(s.pts[i][0], s.pts[i][1]);
+      for(const h of s.holes){
+        if(h.length < 3) continue;
+        const path = new THREE.Path();
+        path.moveTo(h[0][0], h[0][1]);
+        for(let i = 1; i < h.length; i++) path.lineTo(h[i][0], h[i][1]);
+        shape.holes.push(path);
+      }
+      shapes.push(shape);
+    }
+    if(shapes.length){
+      const geo = new THREE.ExtrudeGeometry(shapes, opts);
+      geo.computeBoundingBox();
+      const cx = (geo.boundingBox.min.x + geo.boundingBox.max.x) / 2;
+      geo.translate(-cx, 0, -extrudeDepth / 2);
+      bendGeometry(geo, state.bendDeg);
+      geo.translate(0, line.yOff, 0);
+      textGroup.add(new THREE.Mesh(geo, textMaterial));
+    }
+  }
+
+  /* 整体居中（含多行） */
+  if(textGroup.children.length){
+    const box = new THREE.Box3().setFromObject(textGroup);
+    if(!box.isEmpty()){
+      const c = box.getCenter(new THREE.Vector3());
+      textGroup.position.set(-c.x, -c.y, -c.z);
+    }
+  }
+  textGroup.scale.setScalar(state.size * 0.01);
+
+  setStatus(false, missing > 0 ? `就绪 · ${missing} 字缺失` : '就绪');
+  if(typeof updateDimInfo === 'function') updateDimInfo();
+}
+const debouncedRegen = debounce(regenerate, 200);
+
+/* ---------- 尺寸 / 渲染 ---------- */
+function resize(){ const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+window.addEventListener('resize', resize);
+let recording = false; /* 动画录制中：暂停相机自动旋转，模型角度由录制循环接管 */
+function animate(){ requestAnimationFrame(animate); controls.autoRotate = recording ? false : state.autoRotate; controls.autoRotateSpeed = 1.2; controls.update(); renderer.render(scene, camera); }
+
+/* ---------- 视角 ---------- */
+function fitView(){
+  if(!textGroup.children.length){ camera.position.set(0,1.2,6); controls.target.set(0,0,0); controls.update(); return; }
+  const box = new THREE.Box3().setFromObject(textGroup);
+  const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z, 0.001);
+  const dist = maxDim / (2 * Math.tan(camera.fov * Math.PI / 360)) * 1.8;
+  camera.position.set(center.x, center.y, center.z + dist);
+  controls.target.copy(center); controls.update();
+}
+function setView(pos){
+  if(textGroup.children.length){
+    const box = new THREE.Box3().setFromObject(textGroup);
+    const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+    const d = Math.max(s.x, s.y, s.z, 0.001) * 2.2;
+    camera.position.set(c.x + pos[0]*d, c.y + pos[1]*d, c.z + pos[2]*d); controls.target.copy(c);
+  } else { camera.position.set(pos[0]*6, pos[1]*6+1, pos[2]*6); controls.target.set(0,0,0); }
+  controls.update();
+}
+
+/* ---------- 导出 ---------- */
+function download(content, filename, mime){
+  const blob = content instanceof Blob ? content : new Blob([content], { type: mime || 'text/plain' });
+  const url = URL.createObjectURL(blob); const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function safeName(){
+  if(state.svgShapes && state.svgName) return state.svgName.slice(0,20).replace(/[^\w\u4e00-\u9fa5-]+/g,'_');
+  return (state.text.trim().slice(0,20).replace(/[^\w\u4e00-\u9fa5-]+/g,'_') || 'text3d');
+}
+
+/* ---------- 毫米标定：按目标宽度缩放导出，不影响视口显示 ---------- */
+const mmInput = $('mmInput'), dimInfo = $('dimInfo');
+function targetMM(){ const v = parseFloat(mmInput.value); return (isFinite(v) && v > 0) ? v : 100; }
+function worldBox(){ return textGroup.children.length ? new THREE.Box3().setFromObject(textGroup) : null; }
+function mmScale(){
+  const box = worldBox();
+  if(!box || box.isEmpty()) return 1;
+  const w = box.getSize(new THREE.Vector3()).x;
+  return w > 1e-6 ? targetMM() / w : 1;
+}
+function updateDimInfo(){
+  const box = worldBox();
+  if(!box || box.isEmpty()){ dimInfo.textContent = '—'; return; }
+  const s = box.getSize(new THREE.Vector3()).multiplyScalar(mmScale());
+  dimInfo.textContent = `实际导出：宽 ${targetMM().toFixed(0)} × 高 ${s.y.toFixed(1)} × 深 ${s.z.toFixed(1)} mm`;
+}
+mmInput.addEventListener('input', updateDimInfo);
+
+function makeExportGroup(){
+  const clone = textGroup.clone();
+  clone.scale.multiplyScalar(mmScale());
+  clone.updateMatrixWorld(true);
+  return clone;
+}
+
+function exportGLB(){
+  if(recording){ showToast('动画录制中，请稍候'); return; }
+  if(!textGroup.children.length){ showToast('请先输入文字'); return; }
+  setStatus(true, '导出 GLB…');
+  const exporter = new GLTFExporter();
+  exporter.parse(makeExportGroup(), (result) => {
+    download(new Blob([result], { type:'model/gltf-binary' }), safeName() + '.glb');
+    setStatus(false, '就绪'); showToast(`已导出 GLB（宽 ${targetMM().toFixed(0)}mm）`);
+  }, (err) => { setStatus(false, '就绪'); showToast('导出失败'); console.error(err); }, { binary:true });
+}
+function exportSTL(){
+  if(recording){ showToast('动画录制中，请稍候'); return; }
+  if(!textGroup.children.length){ showToast('请先输入文字'); return; }
+  const out = new STLExporter().parse(makeExportGroup(), { binary:true });
+  download(new Blob([out], { type:'application/octet-stream' }), safeName() + '.stl');
+  showToast(`已导出 STL（宽 ${targetMM().toFixed(0)}mm）`);
+}
+function exportOBJ(){
+  if(recording){ showToast('动画录制中，请稍候'); return; }
+  if(!textGroup.children.length){ showToast('请先输入文字'); return; }
+  const out = new OBJExporter().parse(makeExportGroup());
+  download(out, safeName() + '.obj', 'text/plain');
+  showToast(`已导出 OBJ（宽 ${targetMM().toFixed(0)}mm）`);
+}
+function exportPNG(){
+  if(recording){ showToast('动画录制中，请稍候'); return; }
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if(!w || !h) return;
+  const scale = 2;
+  /* 临时放大 drawing buffer 渲染一帧，复制到离屏 canvas 后立即恢复 */
+  renderer.setSize(w * scale, h * scale, false);
+  renderer.render(scene, camera);
+  const off = document.createElement('canvas');
+  off.width = canvas.width; off.height = canvas.height;
+  off.getContext('2d').drawImage(canvas, 0, 0);
+  renderer.setSize(w, h, false);
+  renderer.render(scene, camera);
+  off.toBlob(blob => { download(blob, safeName() + '.png'); showToast(`已保存 2x 高清截图 (${off.width}×${off.height})`); }, 'image/png');
+}
+
+/* ---------- 旋转动画导出（WebM 视频 / GIF 动图，电商展示） ---------- */
+const animFmtRow = $('animFmtRow'), animGifWRow = $('animGifWRow'), animDirRow = $('animDirRow');
+const animDurSlider = $('animDurSlider'), animDurVal = $('animDurVal');
+const animBtn = $('exportAnim'), animProg = $('animProg');
+const animProgBar = animProg.querySelector('div'), animInfo = $('animInfo');
+const anim = { fmt:'webm', gifW:480, dir:1 };
+const ANIM_WEBM_CANDS = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
+function pickAnimMime(){
+  if(typeof MediaRecorder === 'undefined') return null;
+  for(const m of ANIM_WEBM_CANDS){ try{ if(MediaRecorder.isTypeSupported(m)) return m; }catch(e){} }
+  return null;
+}
+/* 帧角度映射：k∈[0,1] → 基础角 + 方向·2πk（时间戳驱动，无累计漂移） */
+function animAngle(savedRotY, dir, k){ return savedRotY + dir * Math.PI * 2 * k; }
+function setAnimProgress(p){
+  p = Math.min(Math.max(p, 0), 1);
+  animProgBar.style.width = (p * 100).toFixed(1) + '%';
+  animInfo.textContent = p > 0 ? Math.round(p * 100) + '%' : '';
+}
+function syncAnimPills(){
+  animFmtRow.querySelectorAll('.pill').forEach(b => b.classList.toggle('active', b.dataset.fmt === anim.fmt));
+  animGifWRow.querySelectorAll('.pill').forEach(b => b.classList.toggle('active', +b.dataset.w === anim.gifW));
+  animDirRow.querySelectorAll('.pill').forEach(b => b.classList.toggle('active', +b.dataset.dir === anim.dir));
+  animGifWRow.style.display = anim.fmt === 'gif' ? 'flex' : 'none';
+}
+animFmtRow.addEventListener('click', e => { const b = e.target.closest('.pill'); if(!b || b.disabled) return; anim.fmt = b.dataset.fmt; syncAnimPills(); });
+animGifWRow.addEventListener('click', e => { const b = e.target.closest('.pill'); if(!b) return; anim.gifW = +b.dataset.w; syncAnimPills(); });
+animDirRow.addEventListener('click', e => { const b = e.target.closest('.pill'); if(!b) return; anim.dir = +b.dataset.dir; syncAnimPills(); });
+function updateAnimDur(){ const v = +animDurSlider.value; animDurVal.textContent = v + 's'; animDurSlider.style.setProperty('--p', ((v - 2) / 4 * 100) + '%'); }
+animDurSlider.addEventListener('input', updateAnimDur);
+
+/* gif.js：UMD 库走 script 标签挂 window.GIF；worker 脚本跨域不可直接 new Worker，须转 Blob URL */
+const GIF_URLS = [
+  'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/',
+  'https://fastly.jsdelivr.net/npm/gif.js@0.2.0/dist/'
+];
+let gifLib = null;
+async function loadGifLib(){
+  if(gifLib) return gifLib;
+  let workerSrc = null, lastErr = null;
+  for(const base of GIF_URLS){
+    try{
+      const r = await fetch(base + 'gif.worker.js');
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      workerSrc = await r.text();
+      gifLib = { base };
+      break;
+    }catch(e){ lastErr = e; console.warn('gif.js 源不可达，尝试镜像：', base); }
+  }
+  if(!workerSrc) throw new Error('GIF 编码器下载失败（' + (lastErr && lastErr.message || '') + '）');
+  const workerUrl = URL.createObjectURL(new Blob([workerSrc], { type:'application/javascript' }));
+  if(!window.GIF){
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = gifLib.base + 'gif.js'; s.onload = res; s.onerror = () => rej(new Error('gif.js 加载失败，请检查网络'));
+      document.head.appendChild(s);
+    });
+  }
+  gifLib = { GIF: window.GIF, workerUrl };
+  return gifLib;
+}
+
+async function exportAnimRun(){
+  if(recording){ showToast('动画录制中，请稍候'); return; }
+  if(!textGroup.children.length){ showToast('请先输入文字'); return; }
+  const durMs = (+animDurSlider.value) * 1000;
+  const savedRotY = textGroup.rotation.y;
+  recording = true; animBtn.disabled = true;
+  animProg.classList.add('show'); setAnimProgress(0);
+  try{
+    if(anim.fmt === 'webm'){
+      const mime = pickAnimMime();
+      if(!mime) throw new Error('当前浏览器不支持视频录制，请改用 GIF');
+      const stream = canvas.captureStream(60);
+      const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8000000 });
+      const chunks = [];
+      rec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+      const stopped = new Promise(res => { rec.onstop = res; });
+      rec.start(200);
+      const t0 = performance.now();
+      await new Promise(res => {
+        (function tick(){
+          const k = Math.min((performance.now() - t0) / durMs, 1);
+          textGroup.rotation.y = animAngle(savedRotY, anim.dir, k);
+          setAnimProgress(k);
+          if(k >= 1) res(); else requestAnimationFrame(tick);
+        })();
+      });
+      rec.stop(); await stopped;
+      const ext = mime.indexOf('webm') >= 0 ? 'webm' : 'mp4';
+      download(new Blob(chunks, { type: mime }), safeName() + '-rotate.' + ext);
+      showToast('已导出旋转视频（匀速一圈）');
+    } else {
+      const lib = await loadGifLib();
+      const cw = canvas.clientWidth, ch = canvas.clientHeight;
+      if(!cw || !ch) throw new Error('画布尺寸不可用');
+      const gw = anim.gifW, gh = Math.max(2, Math.round(gw * ch / cw));
+      const off = document.createElement('canvas'); off.width = gw; off.height = gh;
+      const ctx = off.getContext('2d', { willReadFrequently: true });
+      const gif = new lib.GIF({ workers: 2, quality: 10, width: gw, height: gh, workerScript: lib.workerUrl, repeat: 0 });
+      const N = Math.max(2, Math.round(durMs / 50)); /* 20 fps */
+      const delay = Math.round(durMs / N);
+      for(let i = 0; i < N; i++){
+        /* 帧角 = 2π·i/N，不含终点帧 → 循环播放时相邻帧角差恒定，完全无缝 */
+        textGroup.rotation.y = animAngle(savedRotY, anim.dir, i / N);
+        renderer.render(scene, camera);
+        ctx.drawImage(canvas, 0, 0, gw, gh);
+        gif.addFrame(ctx, { copy: true, delay });
+        setAnimProgress((i + 1) / N * 0.6);
+        await new Promise(r => requestAnimationFrame(r));
+      }
+      const finished = new Promise((res, rej) => { gif.on('finished', res); gif.on('abort', () => rej(new Error('GIF 编码中止'))); });
+      gif.on('progress', p => setAnimProgress(0.6 + p * 0.4));
+      gif.render();
+      const blob = await finished;
+      download(blob, safeName() + '-rotate.gif');
+      showToast(`已导出 GIF（${gw}×${gh} · ${N} 帧 · 无缝循环）`);
+    }
+  }catch(err){
+    console.error(err);
+    showToast(/GIF|视频录制|画布/.test(err.message || '') ? err.message : '动画导出失败，请检查网络后重试');
+  }finally{
+    textGroup.rotation.y = savedRotY; /* 精确恢复用户场景角度 */
+    recording = false; animBtn.disabled = false;
+    setAnimProgress(0);
+    setTimeout(() => animProg.classList.remove('show'), 600);
+  }
+}
+
+/* 初始化：WebM 不可用则自动切 GIF 并禁用该选项 */
+updateAnimDur();
+if(!pickAnimMime()){
+  anim.fmt = 'gif';
+  const wb = animFmtRow.querySelector('[data-fmt="webm"]');
+  if(wb){ wb.disabled = true; wb.title = '当前浏览器不支持视频录制'; }
+}
+syncAnimPills();
+
+/* ---------- 网页嵌入代码导出 ---------- */
+const codeModal = $('codeModal'), codeArea = $('codeArea'), codeMeta = $('codeMeta');
+function buildEmbedCode(){
+  const p = {
+    text: state.text, fontUrl: FONTS[state.fontKey].url,
+    depth: +state.depth.toFixed(3), bevel: +state.bevel.toFixed(3), bevelSeg: state.bevelSeg, curveSeg: state.curveSeg,
+    color: state.color, metalness: +state.metalness.toFixed(2), roughness: +state.roughness.toFixed(2),
+    emissive: +state.emissive.toFixed(2), size: +state.size.toFixed(2),
+  };
+  const P = JSON.stringify(p);
+
+  return `<!-- TEXT → 3D 生成的嵌入代码：粘贴到网页任意位置 -->
+<div id="t3d-embed" style="width:100%;height:400px;background:#15181D;"></div>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+  "opentype": "https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.module.js"
+} }
+<\/script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import opentype from 'opentype';
+
+const P = ${P};
+const FONT_SIZE = 100;
+
+const box = document.getElementById('t3d-embed');
+const canvas = document.createElement('canvas');
+canvas.style.cssText = 'display:block;width:100%;height:100%';
+box.appendChild(canvas);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x15181D);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+camera.position.set(0, 1.2, 6);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const key = new THREE.DirectionalLight(0xffffff, 1.2); key.position.set(4, 6, 5); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.4); fill.position.set(-5, 2, -3); scene.add(fill);
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+
+const group = new THREE.Group(); scene.add(group);
+const mat = new THREE.MeshStandardMaterial({
+  color: new THREE.Color(P.color), metalness: P.metalness, roughness: P.roughness,
+});
+if (P.emissive > 0) { mat.emissive = new THREE.Color(P.color); mat.emissiveIntensity = P.emissive; }
+
+function signedArea(pts) {
+  let a = 0;
+  for (let p = pts.length - 1, q = 0; q < pts.length; p = q++) a += pts[p].x * pts[q].y - pts[q].x * pts[p].y;
+  return a * 0.5;
+}
+function quad(p0, c1, p1, t) { const u = 1 - t; return { x: u*u*p0.x + 2*u*t*c1.x + t*t*p1.x, y: u*u*p0.y + 2*u*t*c1.y + t*t*p1.y }; }
+function cube(p0, c1, c2, p1, t) { const u = 1 - t; return { x: u*u*u*p0.x + 3*u*u*t*c1.x + 3*u*t*t*c2.x + t*t*t*p1.x, y: u*u*u*p0.y + 3*u*u*t*c1.y + 3*u*t*t*c2.y + t*t*t*p1.y }; }
+
+function pathToShapes(op, steps) {
+  const contours = [];
+  let pts = null;
+  const pushPt = p => pts.push({ x: p.x, y: -p.y });
+  for (const cmd of op.commands) {
+    if (cmd.type === 'M') { pts = []; pushPt(cmd); contours.push(pts); }
+    else if (!pts) continue;
+    else if (cmd.type === 'L') pushPt(cmd);
+    else if (cmd.type === 'Q') { const p0 = pts[pts.length - 1]; for (let i = 1; i <= steps; i++) { const t = i / steps; pts.push(quad(p0, { x: cmd.x1, y: -cmd.y1 }, { x: cmd.x, y: -cmd.y }, t)); } }
+    else if (cmd.type === 'C') { const p0 = pts[pts.length - 1]; for (let i = 1; i <= steps; i++) { const t = i / steps; pts.push(cube(p0, { x: cmd.x1, y: -cmd.y1 }, { x: cmd.x2, y: -cmd.y2 }, { x: cmd.x, y: -cmd.y }, t)); } }
+  }
+  let maxAbs = -1, outerCCW = true;
+  for (const c of contours) { const a = signedArea(c); if (Math.abs(a) > maxAbs) { maxAbs = Math.abs(a); outerCCW = a > 0; } }
+  /* CFF 轮廓顺序不保证孔洞跟在宿主外轮廓之后：两遍 + 顶点包含测试，挂到直接宿主（最小包含外轮廓） */
+  const ptIn = (pt, poly) => {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+      if (((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+    return inside;
+  };
+  const shapes = [];
+  const outers = [];
+  for (const c of contours) {
+    if (c.length < 3) continue;
+    const a = signedArea(c);
+    if ((a > 0) !== outerCCW) continue;
+    outers.push({ idx: shapes.length, area: Math.abs(a), pts: c });
+    const path = new THREE.Shape();
+    const list = outerCCW ? c : c.slice().reverse();
+    path.moveTo(list[0].x, list[0].y);
+    for (let i = 1; i < list.length; i++) path.lineTo(list[i].x, list[i].y);
+    shapes.push(path);
+  }
+  for (const c of contours) {
+    if (c.length < 3) continue;
+    const a = signedArea(c);
+    if ((a > 0) === outerCCW) continue;
+    let host = -1, hostArea = Infinity;
+    for (const o of outers) {
+      if (Math.abs(a) < o.area && ptIn(c[0], o.pts) && o.area < hostArea) { hostArea = o.area; host = o.idx; }
+    }
+    if (host >= 0) {
+      const hole = new THREE.Path();
+      const list = outerCCW ? c : c.slice().reverse();
+      hole.moveTo(list[0].x, list[0].y);
+      for (let i = 1; i < list.length; i++) hole.lineTo(list[i].x, list[i].y);
+      shapes[host].holes.push(hole);
+    }
+  }
+  return shapes;
+}
+
+fetch(P.fontUrl)
+  .then(r => r.arrayBuffer())
+  .then(buf => {
+    const font = opentype.parse(buf);
+    const scale = FONT_SIZE / font.unitsPerEm;
+    const lineH = FONT_SIZE * 1.4;
+    const lines = P.text.split('\\n');
+    const bevel = Math.max(0, P.bevel);
+    const depth = P.depth * FONT_SIZE;
+    const bevelSize = bevel * FONT_SIZE * 0.5;
+    const opts = {
+      depth, bevelEnabled: bevel > 0.0001,
+      bevelThickness: bevelSize, bevelSize: bevelSize * 0.85,
+      bevelOffset: 0, bevelSegments: P.bevelSeg, curveSegments: P.curveSeg,
+    };
+    lines.forEach((line, li) => {
+      let x = 0; const shapes = [];
+      for (const ch of line) {
+        if (ch === ' ') { x += font.charToGlyph(' ').advanceWidth * scale; continue; }
+        const glyph = font.charToGlyph(ch);
+        if (glyph.index === 0) { x += glyph.advanceWidth * scale; continue; }
+        shapes.push(...pathToShapes(glyph.getPath(x, 0, FONT_SIZE), Math.max(4, Math.min(12, P.curveSeg))));
+        x += glyph.advanceWidth * scale;
+      }
+      if (!shapes.length) return;
+      const geo = new THREE.ExtrudeGeometry(shapes, opts);
+      geo.computeBoundingBox();
+      const cx = (geo.boundingBox.min.x + geo.boundingBox.max.x) / 2;
+      geo.translate(-cx, 0, -depth / 2);
+      geo.translate(0, (lines.length - 1) / 2 * lineH - li * lineH, 0);
+      group.add(new THREE.Mesh(geo, mat));
+    });
+    const bb = new THREE.Box3().setFromObject(group);
+    if (!bb.isEmpty()) { const c = bb.getCenter(new THREE.Vector3()); group.position.set(-c.x, -c.y, -c.z); }
+    group.scale.setScalar(P.size * 0.01);
+    fitView();
+  });
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+function fitView() {
+  if (!group.children.length) return;
+  const bb = new THREE.Box3().setFromObject(group);
+  const s = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3());
+  const dist = Math.max(s.x, s.y, s.z, 0.001) / (2 * Math.tan(camera.fov * Math.PI / 360)) * 1.8;
+  camera.position.set(c.x, c.y, c.z + dist);
+  controls.target.copy(c);
+}
+window.addEventListener('resize', resize);
+resize();
+(function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); })();
+<\/script>`;
+}
+
+function openCodeModal(code){
+  codeArea.value = code;
+  codeMeta.textContent = `${code.length} 字符 · three.js`;
+  codeModal.classList.add('show');
+}
+$('codeClose').addEventListener('click', () => codeModal.classList.remove('show'));
+codeModal.addEventListener('click', e => { if(e.target === codeModal) codeModal.classList.remove('show'); });
+$('codeCopy').addEventListener('click', async () => {
+  try{
+    await navigator.clipboard.writeText(codeArea.value);
+    showToast('已复制到剪贴板');
+    codeModal.classList.remove('show');
+  }catch(e){ showToast('复制失败，请手动全选复制'); }
+});
+
+async function exportCode(){
+  if(!textGroup.children.length){ showToast('请先输入文字'); return; }
+  const code = buildEmbedCode();
+  try{
+    await navigator.clipboard.writeText(code);
+    showToast('嵌入代码已复制到剪贴板');
+  }catch(e){
+    openCodeModal(code);
+  }
+}
+
+/* ---------- 绑定控件 ---------- */
+function bindSlider(id, valId, key, fmt, regen){
+  const el = $(id), val = $(valId);
+  function update(){ const v = parseFloat(el.value); state[key] = v; val.textContent = fmt ? fmt(v) : v.toFixed(2); const min = parseFloat(el.min), max = parseFloat(el.max); el.style.setProperty('--p', ((v-min)/(max-min)*100)+'%'); }
+  el.addEventListener('input', () => { update(); (regen || debouncedRegen)(); });
+  el._sync = update;
+  update();
+}
+bindSlider('sizeSlider', 'sizeVal', 'size', v=>v.toFixed(2), () => { textGroup.scale.setScalar(state.size * 0.01); });
+bindSlider('depthSlider', 'depthVal', 'depth', v=>v.toFixed(2));
+bindSlider('bevelSlider', 'bevelVal', 'bevel', v=>v.toFixed(3));
+bindSlider('bevelSegSlider', 'bevelSegVal', 'bevelSeg', v=>v.toFixed(0));
+bindSlider('bendSlider', 'bendVal', 'bendDeg', v=>v.toFixed(0) + '°');
+bindSlider('curveSegSlider', 'curveSegVal', 'curveSeg', v=>v.toFixed(0));
+bindSlider('metalSlider', 'metalVal', 'metalness', v=>v.toFixed(2), () => { if(textMaterial) textMaterial.metalness = state.metalness; if(typeof clearActivePreset === 'function') clearActivePreset(); });
+bindSlider('roughSlider', 'roughVal', 'roughness', v=>v.toFixed(2), () => { if(textMaterial) textMaterial.roughness = state.roughness; if(typeof clearActivePreset === 'function') clearActivePreset(); });
+bindSlider('emitSlider', 'emitVal', 'emissive', v=>v.toFixed(2), () => { if(textMaterial){ textMaterial.emissive = state.emissive > 0 ? new THREE.Color(state.color) : new THREE.Color(0); textMaterial.emissiveIntensity = state.emissive; } if(typeof clearActivePreset === 'function') clearActivePreset(); });
+
+const envEl = $('envSlider'), envVal = $('envVal');
+function updateEnv(){ const v = parseFloat(envEl.value); state.envIntensity = v; envVal.textContent = v.toFixed(1); const min=parseFloat(envEl.min),max=parseFloat(envEl.max); envEl.style.setProperty('--p', ((v-min)/(max-min)*100)+'%'); if(textMaterial) textMaterial.envMapIntensity = v; }
+envEl.addEventListener('input', updateEnv); envEl._sync = updateEnv; updateEnv();
+
+$('textInput').addEventListener('input', e => {
+  state.text = e.target.value;
+  if(state.text.trim() && state.svgShapes){ exitSvgMode(); }  /* 输入文字即退出 SVG 模式 */
+  debouncedRegen();
+});
+$('fontSelect').addEventListener('change', e => { state.fontKey = e.target.value; if(state.svgShapes) exitSvgMode(); regenerate(); });
+
+/* ---------- SVG 导入：Logo 转 3D ---------- */
+const svgFileInput = $('svgFileInput'), svgModeInfo = $('svgModeInfo'), svgClearBtn = $('svgClearBtn');
+function enterSvgMode(name){
+  $('svgClearBtn').style.display = '';
+  svgModeInfo.style.display = '';
+  svgModeInfo.innerHTML = `<span>SVG 模式 · ${name}</span>`;
+  $('textInput').value = '';
+  $('fontStatus').textContent = 'SVG 模式';
+}
+function exitSvgMode(){
+  state.svgShapes = null; state.svgName = '';
+  $('svgClearBtn').style.display = 'none';
+  svgModeInfo.style.display = 'none';
+  $('fontStatus').textContent = FONTS[state.fontKey].name;
+}
+$('svgImportBtn').addEventListener('click', () => svgFileInput.click());
+svgClearBtn.addEventListener('click', () => { exitSvgMode(); regenerate(); });
+svgFileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = SVGLoader.parse(reader.result);
+      let shapes = [];
+      for(const p of data.paths) shapes.push(...SVGLoader.createShapes(p));
+      if(!shapes.length){ showToast('SVG 中未找到可用路径（需包含填充图形）'); return; }
+      /* 展平所有形状为点集，Y 取反 + 归一化到与 FONT_SIZE 同量级，再重建 Shape */
+      const DIV = 24;
+      const flat = shapes.map(s => { const ep = s.extractPoints(DIV); return { pts: ep.shape, holes: ep.holes }; });
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for(const f of flat){
+        for(const p of f.pts){ if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y; }
+        for(const hole of f.holes) for(const p of hole){ if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y; }
+      }
+      const norm = 100 / Math.max(maxX - minX, maxY - minY, 1e-6);
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+      const tp = p => ({ x: (p.x - cx) * norm, y: -(p.y - cy) * norm });
+      const rebuilt = [];
+      for(const f of flat){
+        if(f.pts.length < 3) continue;
+        const shape = new THREE.Shape();
+        f.pts.forEach((p, i) => { const q = tp(p); i === 0 ? shape.moveTo(q.x, q.y) : shape.lineTo(q.x, q.y); });
+        for(const holePts of f.holes){
+          if(holePts.length < 3) continue;
+          const hole = new THREE.Path();
+          holePts.forEach((p, i) => { const q = tp(p); i === 0 ? hole.moveTo(q.x, q.y) : hole.lineTo(q.x, q.y); });
+          shape.holes.push(hole);
+        }
+        rebuilt.push(shape);
+      }
+      if(!rebuilt.length){ showToast('SVG 中未找到有效闭合图形'); return; }
+      state.svgShapes = rebuilt;
+      state.svgName = file.name.replace(/\.svg$/i, '');
+      enterSvgMode(file.name);
+      regenerate();
+      showToast(`已导入 ${file.name}，可调整挤出与材质`);
+    }catch(err){
+      console.error(err);
+      showToast('SVG 解析失败，请检查文件格式');
+    }
+  };
+  reader.readAsText(file);
+});
+
+const colorInput = $('colorInput'), colorSwatch = $('colorSwatch'), colorHex = $('colorHex');
+function applyColor(c){ state.color = c; colorSwatch.style.background = c; colorHex.textContent = c.toUpperCase(); colorInput.value = c; if(textMaterial){ textMaterial.color.set(c); if(state.emissive > 0) textMaterial.emissive.set(c); } }
+colorInput.addEventListener('input', e => { applyColor(e.target.value); if(typeof clearActivePreset === 'function') clearActivePreset(); });
+['#2563EB','#111827','#EF4444','#F59E0B','#10B981','#06B6D4','#8B5CF6','#EC4899','#94A3B8','#FFFFFF'].forEach(c => {
+  const b = document.createElement('div'); b.className = 'preset'; b.style.background = c; b.title = c;
+  b.addEventListener('click', () => { applyColor(c); if(typeof clearActivePreset === 'function') clearActivePreset(); }); $('presets').appendChild(b);
+});
+
+/* ---------- 材质预设一键切换 ---------- */
+const MAT_PRESETS = {
+  original: { color:'#2563EB', metalness:0,    roughness:0.5,  emissive:0 },
+  metal:    { color:'#D4AF37', metalness:1.0,  roughness:0.25, emissive:0 },
+  neon:     { color:'#06B6D4', metalness:0,    roughness:0.4,  emissive:1.0 },
+  stone:    { color:'#9CA3AF', metalness:0,    roughness:0.95, emissive:0 },
+};
+const matPresetBtns = document.querySelectorAll('.mat-preset');
+function markActivePreset(key){
+  matPresetBtns.forEach(b => b.classList.toggle('active', b.dataset.preset === key));
+}
+function clearActivePreset(){ markActivePreset(null); }
+function applyMatPreset(key){
+  const p = MAT_PRESETS[key];
+  if(!p) return;
+  const setSlider = (id, v) => { const el = $(id); el.value = v; el._sync(); };
+  setSlider('metalSlider', p.metalness);
+  setSlider('roughSlider', p.roughness);
+  setSlider('emitSlider', p.emissive);
+  applyColor(p.color);
+  if(textMaterial){
+    textMaterial.metalness = p.metalness;
+    textMaterial.roughness = p.roughness;
+    textMaterial.emissive = p.emissive > 0 ? new THREE.Color(p.color) : new THREE.Color(0);
+    textMaterial.emissiveIntensity = p.emissive;
+    textMaterial.color.set(p.color);
+  }
+  markActivePreset(key);
+  showToast(`已切换：${ { original:'原始', metal:'金属刻字', neon:'霓虹灯牌', stone:'石材雕刻' }[key] }`);
+}
+matPresetBtns.forEach(b => b.addEventListener('click', () => applyMatPreset(b.dataset.preset)));
+markActivePreset('original');
+
+$('wireToggle').addEventListener('change', e => { state.wireframe = e.target.checked; if(textMaterial) textMaterial.wireframe = state.wireframe; });
+$('gridToggle').addEventListener('change', e => { state.grid = e.target.checked; gridGroup.visible = state.grid; });
+$('autoRotateToggle').addEventListener('change', e => { state.autoRotate = e.target.checked; });
+
+$('vpReset').addEventListener('click', () => { camera.position.set(0,1.2,6); controls.target.set(0,0,0); controls.update(); });
+$('vpFront').addEventListener('click', () => setView([0,0,1]));
+$('vpTop').addEventListener('click', () => setView([0,1,0.001]));
+$('vpFit').addEventListener('click', fitView);
+$('exportGlb').addEventListener('click', exportGLB);
+$('exportStl').addEventListener('click', exportSTL);
+$('exportObj').addEventListener('click', exportOBJ);
+$('exportPng').addEventListener('click', exportPNG);
+$('exportCode').addEventListener('click', exportCode);
+$('exportAnim').addEventListener('click', exportAnimRun);
+
+/* ---------- 一键恢复默认参数（保留文字内容） ---------- */
+const DEFAULTS = { fontKey:'sans', size:1.0, depth:0.3, bevel:0, bevelSeg:4, curveSeg:12, bendDeg:0, color:'#2563EB', metalness:0, roughness:0.5, emissive:0, envIntensity:1.0, wireframe:false, grid:false, autoRotate:false };
+function resetAll(){
+  Object.assign(state, DEFAULTS);
+  if(state.svgShapes && typeof exitSvgMode === 'function') exitSvgMode();
+  const setSlider = (id, v) => { const el = $(id); el.value = v; el._sync(); };
+  setSlider('sizeSlider', DEFAULTS.size);
+  setSlider('depthSlider', DEFAULTS.depth);
+  setSlider('bevelSlider', DEFAULTS.bevel);
+  setSlider('bevelSegSlider', DEFAULTS.bevelSeg);
+  setSlider('bendSlider', DEFAULTS.bendDeg);
+  setSlider('curveSegSlider', DEFAULTS.curveSeg);
+  setSlider('metalSlider', DEFAULTS.metalness);
+  setSlider('roughSlider', DEFAULTS.roughness);
+  setSlider('emitSlider', DEFAULTS.emissive);
+  setSlider('envSlider', DEFAULTS.envIntensity);
+  $('fontSelect').value = DEFAULTS.fontKey;
+  $('fontStatus').textContent = FONTS[DEFAULTS.fontKey].name;
+  $('wireToggle').checked = false;
+  $('gridToggle').checked = false;
+  $('autoRotateToggle').checked = false;
+  gridGroup.visible = false;
+  applyColor(DEFAULTS.color);
+  if(typeof markActivePreset === 'function') markActivePreset('original');
+  textGroup.scale.setScalar(DEFAULTS.size * 0.01);
+  regenerate();
+  showToast('已恢复默认参数');
+}
+$('resetBtn').addEventListener('click', resetAll);
+
+/* ---------- 试试示例：一键填充文字 + 金属刻字参数组合 ---------- */
+$('demoTextBtn').addEventListener('click', () => {
+  if(state.svgShapes && typeof exitSvgMode === 'function') exitSvgMode();
+  const setSlider = (id, v) => { const el = $(id); el.value = v; el._sync(); };
+  $('textInput').value = '3D 打印';
+  state.text = '3D 打印';
+  setSlider('sizeSlider', 1.0);
+  setSlider('depthSlider', 0.4);
+  setSlider('bevelSlider', 0.03);
+  setSlider('bevelSegSlider', 4);
+  setSlider('bendSlider', 0);
+  setSlider('curveSegSlider', 12);
+  applyMatPreset('metal');
+  regenerate();
+  showToast('已载入示例：金属刻字 · 调整参数试试');
+});
+
+/* ---------- 启动 ---------- */
+resize(); animate(); regenerate();
+</script>
+</body>
+</html>

@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="在线 3D 模型查看与格式转换工具：拖入 GLB、glTF、STL、OBJ、FBX、PLY 即时预览，支持动画播放、模型统计、灯光相机控制，一键转换导出 GLB/STL/OBJ/PLY/USDZ，全程本地处理不上传。">
+<meta property="og:title" content="3D 模型查看与格式转换 · 在线工具">
+<meta property="og:description" content="GLB/STL/OBJ/FBX/PLY 拖入即看，动画播放 + 模型统计 + 五格式互转，iOS AR 导出，文件不离开本机。">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0F1216">
+<title>3D VIEWER · 模型查看与格式转换</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1216; --panel:#15181D; --border:#262B31; --border-strong:#3A4048;
+    --text:#E8EAED; --text-dim:#9AA0A6; --text-faint:#666C74;
+    --accent:#2563EB; --accent-glow:rgba(37,99,235,0.32);
+    --good:#059669; --warn:#D97706;
+    --radius-sm:8px;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:'Inter','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+  .app{display:grid;grid-template-columns:318px 1fr;height:100vh}
+
+  .sidebar{background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+  .sidebar::-webkit-scrollbar{width:8px}
+  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:4px}
+
+  .brand{padding:22px 22px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+  .brand-mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#2563EB,#3B82F6);display:grid;place-items:center;box-shadow:0 0 0 1px rgba(255,255,255,0.4) inset,0 4px 12px -4px var(--accent-glow);position:relative;overflow:hidden;flex-shrink:0}
+  .brand-mark svg{width:18px;height:18px}
+  .brand-mark::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,0.35) 50%,transparent 70%);transform:translateX(-120%);animation:shimmer 4.5s ease-in-out infinite}
+  @keyframes shimmer{0%,100%{transform:translateX(-120%)}50%{transform:translateX(120%)}}
+  .brand-text h1{font-size:15px;font-weight:600;letter-spacing:-0.02em;color:var(--text)}
+  .brand-text p{font-size:11px;color:var(--text-dim);font-family:var(--mono);letter-spacing:0.04em;margin-top:2px}
+  .brand-reset{margin-left:auto;width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:#1B1F25;color:var(--text-dim);cursor:pointer;display:grid;place-items:center;transition:all .18s ease;flex-shrink:0}
+  .brand-reset:hover{border-color:var(--border-strong);color:var(--accent);background:#22262D}
+  .brand-reset:active{transform:scale(0.95)}
+  .brand-reset svg{width:14px;height:14px}
+
+  .panel{padding:18px 22px;border-bottom:1px solid var(--border)}
+  .panel-title{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:var(--text-faint);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .panel-title::before{content:"";width:3px;height:3px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent-glow)}
+
+  .field{margin-bottom:14px}
+  .field:last-child{margin-bottom:0}
+  .field-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+  .field-label span:first-child{font-size:12px;color:var(--text-dim);font-weight:500}
+  .field-label .val{font-family:var(--mono);font-size:11px;color:var(--text);background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:5px;border:1px solid var(--border)}
+  .dim-info{font-family:var(--mono);font-size:10.5px;color:var(--text-faint);margin-top:6px;line-height:1.5}
+
+  .file-info{display:none;padding:10px 12px;border-radius:10px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.32);margin-top:10px}
+  .file-info.show{display:block}
+  .file-name{font-size:12.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;word-break:break-all}
+  .file-name svg{width:14px;height:14px;color:var(--accent);flex-shrink:0}
+  .file-meta{font-family:var(--mono);font-size:10.5px;color:var(--text-dim);margin-top:5px;letter-spacing:0.03em}
+
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#1B1F25}
+  .stat b{display:block;font-family:var(--mono);font-size:14px;font-weight:500;color:var(--text);letter-spacing:-0.02em}
+  .stat span{display:block;font-size:10px;color:var(--text-faint);margin-top:3px;letter-spacing:0.04em}
+  .stat.empty b{color:var(--text-faint)}
+  .size-row{font-family:var(--mono);font-size:10.5px;color:var(--text-dim);margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);display:none;letter-spacing:0.03em}
+  .size-row.show{display:block}
+  .size-row b{color:var(--text);font-weight:500}
+
+  .bgdot{width:26px;height:26px;min-width:26px;padding:0;flex:0 0 auto}
+  .bgdot.active{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .bgpick{position:relative;overflow:hidden;flex:0 0 auto;width:26px;padding:0;background:linear-gradient(135deg,#ff6b6b,#f7b731,#48dbfb,#1dd1a1)}
+  .bgpick input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .conv-warn{display:none;margin-top:8px;padding:8px 10px;border-radius:8px;font-size:11px;line-height:1.6;color:var(--warn);background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.3)}
+  .conv-warn.show{display:block}
+
+  .cdn-fail{position:fixed;inset:0;z-index:100;display:none;place-items:center;background:var(--bg)}
+  .cdn-fail-box{text-align:center;padding:44px 56px;border:2px dashed #3A4048;border-radius:18px;background:#15181D}
+  .cdn-fail-box svg{width:44px;height:44px;color:var(--warn);margin-bottom:16px}
+  .cdn-fail-box h3{font-size:15px;font-weight:600;margin-bottom:8px;color:var(--text)}
+  .cdn-fail-box p{font-size:12px;color:var(--text-dim);line-height:1.7}
+
+  .select-wrap{position:relative}
+  .select{width:100%;appearance:none;-webkit-appearance:none;background:#1B1F25;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 32px 10px 12px;color:var(--text);font-size:13px;cursor:pointer;outline:none;transition:border-color .2s}
+  .select:hover{border-color:var(--border-strong)}
+  .select:focus{border-color:rgba(37,99,235,0.55)}
+  .select:disabled{opacity:.5;cursor:not-allowed}
+  .select-wrap::after{content:"";position:absolute;right:12px;top:50%;width:8px;height:8px;border-right:1.5px solid var(--text-dim);border-bottom:1.5px solid var(--text-dim);transform:translateY(-65%) rotate(45deg);pointer-events:none}
+
+  .anim-empty{display:none;font-family:var(--mono);font-size:10.5px;color:var(--text-faint);text-align:center;padding:10px;border:1px dashed var(--border);border-radius:8px;margin-top:4px}
+  .anim-empty.show{display:block}
+  .anim-ctrl{display:grid;grid-template-columns:44px 1fr 72px;gap:8px;margin-top:10px;align-items:center}
+  .anim-time{font-family:var(--mono);font-size:10.5px;color:var(--text-dim);text-align:right;margin-top:7px;letter-spacing:0.03em}
+
+  .slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:linear-gradient(90deg,var(--accent) 0%,var(--accent) var(--p,0%),rgba(255,255,255,0.14) var(--p,0%));border-radius:2px;outline:none;cursor:pointer}
+  .slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:#E8EAED;border:2px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,0.15);transition:box-shadow .2s,transform .15s}
+  .slider::-webkit-slider-thumb:hover{box-shadow:0 0 0 5px rgba(37,99,235,0.12),0 1px 4px rgba(0,0,0,0.15);transform:scale(1.08)}
+  .slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#E8EAED;border:2px solid var(--accent);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.15)}
+  .slider:disabled{opacity:.5;cursor:not-allowed}
+
+  .pill-row{display:flex;gap:6px;margin-top:8px}
+  .pill{flex:1;appearance:none;border:1px solid var(--border);background:#1B1F25;color:var(--text-dim);padding:7px 4px;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;transition:all .18s ease;font-family:inherit;white-space:nowrap}
+  .pill:hover{border-color:var(--border-strong);color:var(--text)}
+  .pill:active{transform:scale(.97)}
+  .pill.active{border-color:var(--accent);color:var(--accent);background:rgba(59,130,246,0.16)}
+  .pill:disabled{opacity:.45;cursor:not-allowed}
+
+  .toggle-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0}
+  .toggle-row .lbl{font-size:12px;color:var(--text-dim)}
+  .toggle{position:relative;width:36px;height:20px;cursor:pointer}
+  .toggle input{position:absolute;opacity:0}
+  .toggle .track{position:absolute;inset:0;background:rgba(255,255,255,0.14);border-radius:10px;border:1px solid var(--border);transition:background .2s}
+  .toggle .thumb{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#E8EAED;box-shadow:0 1px 3px rgba(0,0,0,0.4);transition:transform .2s ease}
+  .toggle input:checked + .track{background:var(--accent);border-color:transparent}
+  .toggle input:checked + .track + .thumb{transform:translateX(16px)}
+  .toggle input:disabled + .track{opacity:.5}
+
+  .btn{appearance:none;border:1px solid var(--border);background:#1B1F25;color:var(--text);padding:10px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .18s ease;letter-spacing:-0.01em;font-family:inherit}
+  .btn:hover{border-color:var(--border-strong);background:#22262D;transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn svg{width:14px;height:14px}
+  .btn-accent{background:var(--accent);border-color:transparent;color:#fff;box-shadow:0 4px 14px -4px var(--accent-glow)}
+  .btn-accent:hover{background:#1D4ED8;border-color:transparent;box-shadow:0 8px 20px -6px var(--accent-glow);transform:translateY(-1px)}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+  .main{position:relative;overflow:hidden}
+  #canvas{display:block;width:100%;height:100%}
+  .topbar{position:absolute;top:0;left:0;right:0;height:52px;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:linear-gradient(180deg,rgba(15,18,22,0.8),transparent);pointer-events:none}
+  .topbar > *{pointer-events:auto}
+  .crumb{font-family:var(--mono);font-size:11px;color:var(--text-faint);letter-spacing:0.06em}
+  .crumb b{color:var(--text-dim);font-weight:500}
+  .status{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-dim);font-family:var(--mono);background:rgba(21,24,29,0.9);border:1px solid var(--border);padding:6px 11px;border-radius:8px;backdrop-filter:blur(8px)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 6px rgba(5,150,105,0.5)}
+  .dot.busy{background:var(--warn);box-shadow:0 0 6px rgba(217,119,6,0.5);animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  .vp-controls{position:absolute;bottom:18px;right:18px;z-index:10;display:flex;gap:6px;background:rgba(21,24,29,0.92);border:1px solid var(--border);padding:6px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.04)}
+  .vp-btn{width:34px;height:34px;border-radius:8px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;display:grid;place-items:center;transition:background .15s,color .15s}
+  .vp-btn:hover{background:rgba(255,255,255,0.08);color:var(--text)}
+  .vp-btn svg{width:16px;height:16px}
+  .hint{position:absolute;bottom:18px;left:18px;z-index:10;font-family:var(--mono);font-size:10.5px;color:var(--text-faint);background:rgba(21,24,29,0.9);border:1px solid var(--border);padding:7px 11px;border-radius:8px;backdrop-filter:blur(8px);letter-spacing:0.04em}
+  .hint kbd{background:rgba(255,255,255,0.07);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--text-dim);margin:0 2px}
+
+  .empty-state{position:absolute;inset:0;z-index:15;display:grid;place-items:center;background:rgba(15,18,22,0.55);backdrop-filter:blur(2px);cursor:pointer;transition:opacity .3s}
+  .empty-state.hide{opacity:0;pointer-events:none}
+  .empty-box{text-align:center;padding:44px 56px;border:2px dashed #3A4048;border-radius:18px;background:rgba(21,24,29,0.75);transition:border-color .2s,transform .2s}
+  .empty-state:hover .empty-box{border-color:var(--accent);transform:translateY(-2px)}
+  .empty-box svg{width:44px;height:44px;color:var(--text-faint);margin-bottom:16px}
+  .empty-box h3{font-size:15px;font-weight:600;margin-bottom:8px}
+  .empty-box p{font-size:12px;color:var(--text-dim);line-height:1.7}
+  .empty-box p b{color:var(--accent);font-weight:600}
+
+  .drop-overlay{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(37,99,235,0.08);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .2s}
+  .drop-overlay.show{opacity:1}
+  .drop-box{padding:40px 72px;border:2px dashed var(--accent);border-radius:18px;background:rgba(21,24,29,0.92);text-align:center;font-size:15px;font-weight:600;color:var(--accent);box-shadow:0 20px 60px -20px var(--accent-glow)}
+  .drop-box span{display:block;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--text-dim);margin-top:8px;letter-spacing:0.05em}
+
+  .loader{position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:rgba(15,18,22,0.75);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+  .loader.show{opacity:1;pointer-events:auto}
+  .loader-box{text-align:center}
+  .loader-ring{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,0.1);border-top-color:var(--accent);margin:0 auto 10px;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loader-text{font-size:11px;color:var(--text-dim);font-family:var(--mono);letter-spacing:0.06em}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(27,31,37,0.97);border:1px solid var(--border-strong);color:var(--text);padding:10px 16px;border-radius:10px;font-size:12.5px;backdrop-filter:blur(12px);z-index:80;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;display:flex;align-items:center;gap:9px;box-shadow:0 10px 40px -10px rgba(0,0,0,0.2)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast .ti{width:16px;height:16px;color:var(--good)}
+
+  @media (max-width:860px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr}.sidebar{max-height:46vh;border-right:none;border-bottom:1px solid var(--border)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+      <div class="brand-text"><h1>3D VIEWER</h1><p>模型查看 · 格式转换</p></div>
+      <a class="brand-reset" href="./index.html" title="返回首页" style="text-decoration:none;display:grid;place-items:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></a>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">模型文件</div>
+      <div class="field">
+        <button class="btn btn-accent" id="uploadBtn" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>选择模型文件</button>
+        <div class="pill-row" style="margin-top:8px">
+          <button type="button" class="pill" id="demoDuckBtn" title="程序化生成的静态示例">🦆 示例 · 小鸭子</button>
+          <button type="button" class="pill" id="demoRobotBtn" title="程序化生成 · 带关键帧动画">🤖 示例 · 跳舞机器人</button>
+        </div>
+        <div class="dim-info" style="text-align:center;margin-top:6px">没有模型？点一个示例立即体验</div>
+        <input type="file" id="fileInput" accept=".glb,.gltf,.stl,.obj,.mtl,.fbx,.ply,.bin,.png,.jpg,.jpeg,.webp,.bmp,.tga" multiple style="display:none" />
+        <div class="file-info" id="fileInfo">
+          <div class="file-name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg><span id="fileName">-</span></div>
+          <div class="file-meta" id="fileMeta">-</div>
+        </div>
+        <div class="dim-info">或拖入右侧画布 · GLB / glTF / STL / OBJ / FBX / PLY<br/>OBJ 与 glTF 请连同 .mtl / .bin / 贴图整套选择 · 本地解析不上传</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">模型统计</div>
+      <div class="stats-grid">
+        <div class="stat empty"><b id="statVerts">—</b><span>顶点 VERTICES</span></div>
+        <div class="stat empty"><b id="statTris">—</b><span>三角面 TRIANGLES</span></div>
+        <div class="stat empty"><b id="statMeshes">—</b><span>网格 MESHES</span></div>
+        <div class="stat empty"><b id="statMats">—</b><span>材质 MATERIALS</span></div>
+        <div class="stat empty"><b id="statTex">—</b><span>贴图 TEXTURES</span></div>
+        <div class="stat empty"><b id="statAnims">—</b><span>动画 ANIMATIONS</span></div>
+      </div>
+      <div class="size-row" id="sizeRow">包围盒 <b id="sizeVal">-</b></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">动画播放</div>
+      <div class="field">
+        <div class="select-wrap">
+          <select class="select" id="animSelect" disabled><option>此模型不含动画</option></select>
+        </div>
+        <div class="anim-ctrl">
+          <button class="btn" id="playBtn" disabled title="播放 / 暂停" style="padding:9px 0"><svg id="playIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
+          <input type="range" class="slider" id="animProgress" min="0" max="1" step="0.001" value="0" disabled />
+          <div class="pill-row" style="margin-top:0">
+            <button type="button" class="pill" data-speed="0.5">0.5x</button>
+            <button type="button" class="pill active" data-speed="1">1x</button>
+            <button type="button" class="pill" data-speed="2">2x</button>
+          </div>
+        </div>
+        <div class="anim-time"><span id="animTime">0.00s / 0.00s</span></div>
+        <div class="anim-empty" id="animEmpty">此模型不含动画轨道</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">显示</div>
+      <div class="field">
+        <div class="toggle-row"><span class="lbl">网格</span><label class="toggle"><input id="gridToggle" type="checkbox"><span class="track"></span><span class="thumb"></span></label></div>
+        <div class="toggle-row"><span class="lbl">自动旋转</span><label class="toggle"><input id="autoRotateToggle" type="checkbox" checked><span class="track"></span><span class="thumb"></span></label></div>
+        <div class="toggle-row"><span class="lbl">线框模式</span><label class="toggle"><input id="wireToggle" type="checkbox"><span class="track"></span><span class="thumb"></span></label></div>
+      </div>
+      <div class="field">
+        <div class="field-label"><span>环境强度</span><span class="val" id="envVal">1.0</span></div>
+        <input id="envSlider" class="slider" type="range" min="0" max="3" step="0.1" value="1" />
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">环境与相机</div>
+      <div class="field">
+        <div class="field-label"><span>灯光预设</span></div>
+        <div class="pill-row" id="lightPresetRow">
+          <button type="button" class="pill active" data-light="studio">摄影棚</button>
+          <button type="button" class="pill" data-light="soft">柔光</button>
+          <button type="button" class="pill" data-light="dark">暗室</button>
+        </div>
+        <div class="field-label" style="margin-top:10px"><span>背景色</span></div>
+        <div class="pill-row" id="bgRow">
+          <button type="button" class="pill bgdot active" data-bg="#15181D" title="深灰" style="background:#15181D"></button>
+          <button type="button" class="pill bgdot" data-bg="#2A2E35" title="碳黑" style="background:#2A2E35"></button>
+          <button type="button" class="pill bgdot" data-bg="#F1F3F5" title="浅灰" style="background:#F1F3F5"></button>
+          <button type="button" class="pill bgdot" data-bg="#FFFFFF" title="白色" style="background:#FFFFFF"></button>
+          <label class="pill bgpick" title="自定义背景色"><input type="color" id="bgColor" value="#15181D"></label>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label"><span>曝光</span><span class="val" id="exposureVal">1.00</span></div>
+        <input id="exposureSlider" class="slider" type="range" min="0.2" max="2" step="0.05" value="1" />
+      </div>
+      <div class="field">
+        <div class="field-label"><span>视场角 FOV</span><span class="val" id="fovVal">45°</span></div>
+        <input id="fovSlider" class="slider" type="range" min="20" max="100" step="1" value="45" />
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">格式转换</div>
+      <div class="field">
+        <div class="pill-row" id="convFmtRow">
+          <button type="button" class="pill active" data-fmt="glb" title="glTF 2.0 二进制 · 材质+动画">GLB</button>
+          <button type="button" class="pill" data-fmt="stl" title="3D 打印 · 仅几何">STL</button>
+          <button type="button" class="pill" data-fmt="obj" title="通用交换 · 几何+材质参数">OBJ</button>
+          <button type="button" class="pill" data-fmt="ply" title="扫描/点云 · 几何+顶点色">PLY</button>
+          <button type="button" class="pill" data-fmt="usdz" title="iOS AR Quick Look">USDZ</button>
+        </div>
+        <div class="conv-warn" id="convWarn"></div>
+        <button class="btn btn-accent" id="convertBtn" style="width:100%;margin-top:10px" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出模型（原始尺寸）</button>
+        <div class="dim-info">按统计面板显示的原始尺寸导出 · 全程本地处理</div>
+      </div>
+    </div>
+
+    <div class="panel" style="border-bottom:none">
+      <div class="panel-title">导出</div>
+      <button class="btn" id="shotBtn" style="width:100%" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>高清截图（2x PNG）</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <canvas id="canvas"></canvas>
+    <div class="topbar">
+      <div class="crumb">workspace / <b>viewer</b> / viewport</div>
+      <div class="status"><div class="dot" id="statusDot"></div><span id="statusText">等待模型</span></div>
+    </div>
+    <div class="vp-controls">
+      <button class="vp-btn" id="vpReset" title="复位视角"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+      <button class="vp-btn" id="vpFront" title="前视图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8"/></svg></button>
+      <button class="vp-btn" id="vpTop" title="顶视图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8"/></svg></button>
+      <button class="vp-btn" id="vpFit" title="适配视图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+    </div>
+    <div class="hint"><kbd>拖拽</kbd>旋转 · <kbd>滚轮</kbd>缩放 · <kbd>双击</kbd>聚焦 · <kbd>F</kbd>适配 · <kbd>G</kbd>网格 · <kbd>W</kbd>线框 · <kbd>空格</kbd>播放</div>
+
+    <div class="empty-state" id="emptyState">
+      <div class="empty-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        <h3>拖入模型文件开始预览</h3>
+        <p>或 <b>点击此处</b> 选择文件<br/>GLB · glTF · STL · OBJ · FBX · PLY<br/>本地解析，不上传</p>
+      </div>
+    </div>
+
+    <div class="loader" id="loader"><div class="loader-box"><div class="loader-ring"></div><div class="loader-text" id="loaderText">解析模型…</div></div></div>
+  </div>
+</div>
+
+<div class="drop-overlay" id="dropOverlay"><div class="drop-box">松开以载入模型<span>GLB / glTF / STL / OBJ / FBX / PLY · 多文件可整套拖入</span></div></div>
+
+<div class="toast" id="toast"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span id="toastText"></span></div>
+
+<div class="cdn-fail" id="cdn-fail">
+  <div class="cdn-fail-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <h3>无法加载 3D 引擎</h3>
+    <p>所有 CDN 源均不可达（jsdelivr / fastly / unpkg）<br/>请检查网络连接后刷新重试</p>
+  </div>
+</div>
+
+<script>
+/* CDN 容灾引导：jsdelivr → fastly 镜像 → unpkg 逐源探测，选中后注入 importmap 再执行主代码 */
+(function(){
+  window.__CDN_BASES = [
+    'https://cdn.jsdelivr.net/npm/three@0.160.0',
+    'https://fastly.jsdelivr.net/npm/three@0.160.0',
+    'https://unpkg.com/three@0.160.0'
+  ];
+  function cdnFail(){
+    var el = document.getElementById('cdn-fail');
+    if(el) el.style.display = 'grid';
+    var st = document.getElementById('statusText');
+    if(st) st.textContent = 'CDN 不可达';
+  }
+  function boot(base){
+    window.__CDN_OK = base;
+    var im = document.createElement('script');
+    im.type = 'importmap';
+    im.textContent = JSON.stringify({ imports: {
+      'three': base + '/build/three.module.js',
+      'three/addons/': base + '/examples/jsm/'
+    } });
+    document.head.appendChild(im);
+    var s = document.createElement('script');
+    s.type = 'module';
+    s.textContent = document.getElementById('app-code').textContent;
+    document.body.appendChild(s);
+  }
+  (async function(){
+    for(var i = 0; i < window.__CDN_BASES.length; i++){
+      try{ await import(window.__CDN_BASES[i] + '/build/three.module.js'); boot(window.__CDN_BASES[i]); return; }
+      catch(e){ console.warn('CDN 不可达，尝试下一源：', window.__CDN_BASES[i]); }
+    }
+    cdnFail();
+  })();
+})();
+</script>
+<script type="text/plain" id="app-code">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { PLYLoader } from 'three/addons/loaders/PLYLoader.js';
+import { TGALoader } from 'three/addons/loaders/TGALoader.js';
+import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
+import { PLYExporter } from 'three/addons/exporters/PLYExporter.js';
+import { USDZExporter } from 'three/addons/exporters/USDZExporter.js';
+
+const $ = id => document.getElementById(id);
+const canvas = $('canvas'), statusDot = $('statusDot'), statusText = $('statusText');
+const toast = $('toast'), toastText = $('toastText');
+const loaderEl = $('loader'), loaderText = $('loaderText');
+
+function setStatus(busy, text){ statusDot.classList.toggle('busy', busy); statusText.textContent = text; }
+function showToast(msg){ toastText.textContent = msg; toast.classList.add('show'); clearTimeout(showToast._t); showToast._t = setTimeout(()=>toast.classList.remove('show'), 2600); }
+function showLoader(show, text){ loaderText.textContent = text || '解析模型…'; loaderEl.classList.toggle('show', !!show); }
+function fmtSize(bytes){
+  if(bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' MB';
+  if(bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+function fmtNum(n){ return n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(n); }
+function baseName(name){ return name.replace(/\.(glb|gltf|stl|obj|mtl|fbx|ply|bin)$/i, '').replace(/[^\w\u4e00-\u9fa5-]+/g, '_').slice(0, 40) || 'model'; }
+
+/* ---------- 场景 ---------- */
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x15181D);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 10000);
+camera.position.set(0, 1.2, 6);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.2;
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const key = new THREE.DirectionalLight(0xffffff, 1.2);
+key.position.set(4, 6, 5);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.near = 0.1; key.shadow.camera.far = 20;
+key.shadow.camera.left = -4; key.shadow.camera.right = 4;
+key.shadow.camera.top = 4; key.shadow.camera.bottom = -4;
+key.shadow.bias = -0.0005;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.4); fill.position.set(-5, 2, -3); scene.add(fill);
+const ambient = new THREE.AmbientLight(0xffffff, 0.4); scene.add(ambient);
+const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.ShadowMaterial({ opacity: 0.5 }));
+shadowPlane.rotation.x = -Math.PI / 2;
+shadowPlane.receiveShadow = true;
+scene.add(shadowPlane);
+
+const gridGroup = new THREE.Group(); scene.add(gridGroup);
+const grid = new THREE.GridHelper(10, 20, 0x3A4048, 0x262B31);
+grid.material.transparent = true; grid.material.opacity = 0.9;
+gridGroup.add(grid);
+gridGroup.visible = false;
+
+const modelGroup = new THREE.Group(); scene.add(modelGroup);
+
+function resize(){
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if(!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas);
+
+function worldBox(){ const box = new THREE.Box3(); return modelGroup.children.length ? box.setFromObject(modelGroup) : box.set(new THREE.Vector3(-1,-1,-1), new THREE.Vector3(1,1,1)); }
+function fitView(){
+  const box = worldBox(), c = box.getCenter(new THREE.Vector3()), r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1e-3);
+  const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.15;
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  if(!dir.lengthSq()) dir.set(0, 0.2, 1);
+  controls.target.copy(c);
+  camera.position.copy(c).addScaledVector(dir, dist);
+  controls.update();
+}
+function setView(v){
+  const box = worldBox(), c = box.getCenter(new THREE.Vector3()), r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1e-3);
+  const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.15;
+  controls.target.copy(c);
+  camera.position.set(c.x + v[0] * dist, c.y + v[1] * dist, c.z + v[2] * dist);
+  controls.update();
+}
+
+/* ---------- 渲染循环 ---------- */
+const clock = new THREE.Clock();
+let mixer = null, activeAction = null, playing = false, seeking = false;
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  if(mixer && playing) mixer.update(dt);
+  if(activeAction && !seeking){
+    const clip = activeAction.getClip();
+    const k = clip.duration > 0 ? Math.min(activeAction.time / clip.duration, 1) : 0;
+    syncProgressUI(k);
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+/* ---------- GLB 加载（解码器与主库同 CDN 源，避免 gstatic 单点） ---------- */
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath(window.__CDN_OK + '/examples/jsm/libs/draco/');
+const ktx2Loader = new KTX2Loader();
+ktx2Loader.setTranscoderPath(window.__CDN_OK + '/examples/jsm/libs/basis/');
+ktx2Loader.detectSupport(renderer);
+const gltfLoader = new GLTFLoader();
+gltfLoader.setDRACOLoader(dracoLoader);
+gltfLoader.setKTX2Loader(ktx2Loader);
+
+let currentModel = null, currentClips = [], currentFmt = '', currentCaps = { hasMat: false, hasAnim: false };
+
+function disposeModel(model){
+  model.traverse(node => {
+    if(node.isMesh || node.isSkinnedMesh){
+      node.geometry && node.geometry.dispose();
+      const mats = Array.isArray(node.material) ? node.material : [node.material];
+      for(const m of mats){
+        if(!m) continue;
+        for(const key of ['map','normalMap','aoMap','emissiveMap','roughnessMap','metalnessMap','alphaMap','bumpMap','specularMap','clearcoatMap','iridescenceMap','sheenColorMap','transmissionMap']){
+          if(m[key]) m[key].dispose();
+        }
+        m.dispose();
+      }
+    }
+  });
+}
+function setWireframe(on){
+  if(!currentModel) return;
+  currentModel.traverse(node => {
+    if(node.isMesh || node.isSkinnedMesh){
+      const mats = Array.isArray(node.material) ? node.material : [node.material];
+      for(const m of mats){ if(m && 'wireframe' in m) m.wireframe = on; }
+    }
+  });
+}
+function setEnvIntensity(v){
+  if(!currentModel) return;
+  currentModel.traverse(node => {
+    if(node.isMesh || node.isSkinnedMesh){
+      const mats = Array.isArray(node.material) ? node.material : [node.material];
+      for(const m of mats){ if(m && 'envMapIntensity' in m) m.envMapIntensity = v; }
+    }
+  });
+}
+
+function collectStats(model){
+  let verts = 0, tris = 0, meshes = 0, vColors = 0;
+  const mats = new Set(), texs = new Set();
+  const TEX_KEYS = ['map','normalMap','aoMap','emissiveMap','roughnessMap','metalnessMap','alphaMap','bumpMap','specularMap','clearcoatMap','iridescenceMap','sheenColorMap','transmissionMap'];
+  model.traverse(node => {
+    if(node.isMesh || node.isSkinnedMesh){
+      meshes++;
+      const g = node.geometry;
+      if(g && g.attributes.position){
+        verts += g.attributes.position.count;
+        tris += g.index ? g.index.count / 3 : g.attributes.position.count / 3;
+      }
+      if(g && g.attributes.color) vColors++;
+      const list = Array.isArray(node.material) ? node.material : [node.material];
+      for(const m of list){
+        if(!m) continue;
+        mats.add(m);
+        for(const k of TEX_KEYS){ if(m[k]) texs.add(m[k]); }
+      }
+    }
+  });
+  return { verts, tris: Math.round(tris), meshes, mats: mats.size, texs: texs.size, vColors };
+}
+
+function syncProgressUI(k){
+  const el = $('animProgress');
+  el.value = k;
+  el.style.setProperty('--p', (k * 100) + '%');
+}
+
+function resetAnimUI(){
+  mixer = null; activeAction = null; playing = false;
+  const sel = $('animSelect');
+  sel.innerHTML = '<option>此模型不含动画</option>'; sel.disabled = true;
+  $('playBtn').disabled = true;
+  $('animProgress').disabled = true; syncProgressUI(0);
+  $('animTime').textContent = '0.00s / 0.00s';
+  $('animEmpty').classList.add('show');
+  setPlayIcon(false);
+}
+function setPlayIcon(isPlaying){
+  $('playIcon').innerHTML = isPlaying
+    ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+    : '<polygon points="6 3 20 12 6 21 6 3"/>';
+}
+
+function applyModel(root, clips, fileMeta, fmtLabel){
+  if(currentModel){ modelGroup.remove(currentModel); disposeModel(currentModel); }
+  currentModel = root;
+  currentClips = clips || [];
+  currentFmt = fmtLabel || '';
+  modelGroup.add(currentModel);
+
+  /* 记录原始变换（导出时撤销归一化，保证导出尺寸 = 统计显示尺寸） */
+  currentModel.userData._orig = {
+    sx: currentModel.scale.x, sy: currentModel.scale.y, sz: currentModel.scale.z,
+    px: currentModel.position.x, py: currentModel.position.y, pz: currentModel.position.z,
+  };
+  /* 归一显示：最长边缩放到 2 单位，x/z 居中、底部贴地（网格/阴影面 y=0） */
+  const box = new THREE.Box3().setFromObject(currentModel);
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z, 1e-6);
+  const s = 2 / maxDim;
+  currentModel.scale.setScalar(s);
+  box.setFromObject(currentModel);
+  const c = box.getCenter(new THREE.Vector3());
+  currentModel.position.x -= c.x;
+  currentModel.position.z -= c.z;
+  currentModel.position.y -= box.min.y;
+  currentModel.traverse(node => {
+    if(node.isMesh || node.isSkinnedMesh){ node.castShadow = true; node.receiveShadow = true; }
+  });
+
+  /* 统计（几何数量与缩放无关，尺寸按原始单位展示） */
+  const st = collectStats(currentModel);
+  /* 材质能力判定：有贴图 / 有顶点色 / 来源格式本身携带材质参数（GLB·glTF·FBX·OBJ+MTL·内置示例）。
+     STL/PLY(无色)/OBJ(无MTL) 仅几何 → 转 STL 不误报。 */
+  currentCaps = { hasMat: st.texs > 0 || st.vColors > 0 || /GLB|GLTF|FBX|OBJ\+MTL|DEMO/.test(currentFmt), hasAnim: currentClips.length > 0 };
+  $('statVerts').textContent = fmtNum(st.verts);
+  $('statTris').textContent = fmtNum(st.tris);
+  $('statMeshes').textContent = fmtNum(st.meshes);
+  $('statMats').textContent = fmtNum(st.mats);
+  $('statTex').textContent = fmtNum(st.texs);
+  $('statAnims').textContent = fmtNum(currentClips.length);
+  document.querySelectorAll('.stat').forEach(el => el.classList.remove('empty'));
+  $('sizeRow').classList.add('show');
+  $('sizeVal').textContent = `${size.x.toFixed(2)} × ${size.y.toFixed(2)} × ${size.z.toFixed(2)}`;
+
+  /* 文件信息 */
+  $('fileInfo').classList.add('show');
+  $('fileName').textContent = fileMeta.name;
+  $('fileMeta').textContent = `${currentFmt} · ${fileMeta.size > 0 ? fmtSize(fileMeta.size) : '内置程序化生成'} · ${currentClips.length} 动画 · ${st.meshes} 网格`;
+
+  /* 动画 */
+  resetAnimUI();
+  if(currentClips.length){
+    const sel = $('animSelect');
+    sel.innerHTML = '';
+    currentClips.forEach((clip, i) => {
+      const o = document.createElement('option');
+      o.value = i;
+      o.textContent = `${clip.name || '动画 ' + (i + 1)} · ${clip.duration.toFixed(2)}s`;
+      sel.appendChild(o);
+    });
+    sel.disabled = false;
+    $('playBtn').disabled = false;
+    $('animProgress').disabled = false;
+    $('animEmpty').classList.remove('show');
+    mixer = new THREE.AnimationMixer(currentModel);
+    selectClip(0);
+    playing = true; setPlayIcon(true);
+  }
+
+  /* 应用当前显示设置 */
+  setWireframe($('wireToggle').checked);
+  setEnvIntensity(parseFloat($('envSlider').value));
+
+  $('emptyState').classList.add('hide');
+  $('shotBtn').disabled = false;
+  updateConvWarn();
+  setView([0, 0.15, 1]);
+  setStatus(false, '就绪 · ' + fileMeta.name);
+  showToast(`已载入 ${fileMeta.name}（${currentFmt} · ${fmtNum(st.tris)} 三角面）`);
+}
+
+function selectClip(i){
+  const clip = currentClips[i];
+  if(!clip) return;
+  if(activeAction){ activeAction.stop(); mixer.uncacheClip(activeAction.getClip()); }
+  activeAction = mixer.clipAction(clip);
+  activeAction.reset();
+  activeAction.play();
+  activeAction.paused = !playing;
+  syncProgressUI(0);
+  $('animTime').textContent = `0.00s / ${clip.duration.toFixed(2)}s`;
+}
+
+/* ---------- 内置示例（程序化生成，零下载 · file:// 可用） ---------- */
+function stdMat(color, roughness){ return new THREE.MeshStandardMaterial({ color, roughness: roughness !== undefined ? roughness : 0.55, metalness: 0.05 }); }
+function part(parent, geo, mat, pos, rot, scl, name){
+  const m = new THREE.Mesh(geo, mat);
+  if(pos) m.position.set(...pos);
+  if(rot) m.rotation.set(...rot);
+  if(scl) m.scale.set(...scl);
+  m.name = name || '';
+  m.castShadow = true; m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+function buildDuckDemo(){
+  const duck = new THREE.Group(); duck.name = 'DuckDemo';
+  const yellow = stdMat(0xFFD21F), orange = stdMat(0xFF8F00, 0.5), dark = stdMat(0x212121, 0.35);
+  part(duck, new THREE.SphereGeometry(1, 32, 24), yellow, [0, 0, -0.15], null, [1.05, 0.82, 1.25], 'body');
+  part(duck, new THREE.ConeGeometry(0.3, 0.6, 20), yellow, [0, 0.42, -1.3], [-0.7, 0, 0], null, 'tail');
+  part(duck, new THREE.SphereGeometry(0.52, 32, 24), yellow, [0, 0.98, 0.82], null, null, 'head');
+  part(duck, new THREE.SphereGeometry(0.26, 24, 16), orange, [0, 0.92, 1.32], null, [1.05, 0.32, 1.25], 'beakTop');
+  part(duck, new THREE.SphereGeometry(0.22, 24, 16), orange, [0, 0.8, 1.28], null, [0.95, 0.28, 1.1], 'beakBottom');
+  part(duck, new THREE.SphereGeometry(0.065, 16, 12), dark, [0.21, 1.1, 1.2], null, null, 'eyeL');
+  part(duck, new THREE.SphereGeometry(0.065, 16, 12), dark, [-0.21, 1.1, 1.2], null, null, 'eyeR');
+  part(duck, new THREE.SphereGeometry(0.5, 24, 18), yellow, [0.92, 0.12, -0.25], [0, 0, -0.28], [0.32, 0.5, 0.85], 'wingL');
+  part(duck, new THREE.SphereGeometry(0.5, 24, 18), yellow, [-0.92, 0.12, -0.25], [0, 0, 0.28], [0.32, 0.5, 0.85], 'wingR');
+  part(duck, new THREE.BoxGeometry(0.42, 0.12, 0.62, 2, 2, 2), orange, [0.42, -0.86, 0.18], null, null, 'footL');
+  part(duck, new THREE.BoxGeometry(0.42, 0.12, 0.62, 2, 2, 2), orange, [-0.42, -0.86, 0.18], null, null, 'footR');
+  return { root: duck, clips: [] };
+}
+function buildRobotDemo(){
+  const r = new THREE.Group(); r.name = 'RobotDemo';
+  const body = stdMat(0x3B82F6, 0.35), light = stdMat(0x93C5FD, 0.4), dark = stdMat(0x1E293B, 0.5), glow = stdMat(0x10B981, 0.3);
+  const torso = part(r, new THREE.BoxGeometry(1.1, 1.3, 0.7, 3, 3, 3), body, [0, 1.15, 0], null, null, 'torso');
+  part(r, new THREE.BoxGeometry(0.5, 0.35, 0.18), glow, [0, 1.25, 0.37], null, null, 'chestLight');
+  part(r, new THREE.BoxGeometry(0.8, 0.45, 0.75, 2, 2, 2), dark, [0, 0.28, 0], null, null, 'hips');
+  const head = part(r, new THREE.BoxGeometry(0.75, 0.65, 0.7, 3, 3, 3), light, [0, 2.2, 0], null, null, 'head');
+  part(r, new THREE.BoxGeometry(0.16, 0.12, 0.05), dark, [0.19, 2.28, 0.36], null, null, 'eyeL');
+  part(r, new THREE.BoxGeometry(0.16, 0.12, 0.05), dark, [-0.19, 2.28, 0.36], null, null, 'eyeR');
+  part(r, new THREE.CylinderGeometry(0.06, 0.06, 0.3, 10), dark, [0, 2.68, 0], null, null, 'antenna');
+  part(r, new THREE.SphereGeometry(0.09, 12, 10), glow, [0, 2.9, 0], null, null, 'antennaTip');
+  const armL = part(r, new THREE.CapsuleGeometry(0.14, 0.6, 6, 12), body, [0.82, 1.25, 0], null, null, 'armL');
+  const armR = part(r, new THREE.CapsuleGeometry(0.14, 0.6, 6, 12), body, [-0.82, 1.25, 0], null, null, 'armR');
+  const legL = part(r, new THREE.CapsuleGeometry(0.17, 0.55, 6, 12), dark, [0.3, -0.35, 0], null, null, 'legL');
+  const legR = part(r, new THREE.CapsuleGeometry(0.17, 0.55, 6, 12), dark, [-0.3, -0.35, 0], null, null, 'legR');
+  /* 关键帧动画：整体跳跃扭转 + 头左右 + 手臂挥舞（2.4s 循环） */
+  const T = 2.4, half = T / 2;
+  const times = [0, half * 0.25, half * 0.5, half * 0.75, half, T * 0.625, T * 0.75, T * 0.875, T];
+  const bodyY = [0, 0.35, 0, 0.35, 0, 0.35, 0, 0.35, 0];
+  const rotY = [0, 0, Math.PI / 6, 0, Math.PI / 3, Math.PI / 6, Math.PI / 3, Math.PI / 6, 0];
+  const headZ = [0, 0.22, 0, -0.22, 0, 0.22, 0, -0.22, 0];
+  const armLZ = [0, -1.2, 0, -1.2, 0, -1.2, 0, -1.2, 0];
+  const armRZ = [0, 1.2, 0, 1.2, 0, 1.2, 0, 1.2, 0];
+  const clips = [new THREE.AnimationClip('dance', T, [
+    new THREE.KeyframeTrack('.position[y]', times, bodyY),
+    new THREE.KeyframeTrack('.rotation[y]', times, rotY),
+    new THREE.KeyframeTrack('head.rotation[z]', times, headZ),
+    new THREE.KeyframeTrack('armL.rotation[z]', times, armLZ),
+    new THREE.KeyframeTrack('armR.rotation[z]', times, armRZ),
+  ])];
+  /* 手臂/头挂 pivot 便于绕肩/颈旋转 */
+  return { root: r, clips };
+}
+function loadDemo(builder, label, fmt){
+  setStatus(true, '生成示例…');
+  try{
+    const { root, clips } = builder();
+    applyModel(root, clips, { name: label, size: 0 }, fmt);
+  }catch(err){
+    console.error(err);
+    setStatus(false, '载入失败');
+    showToast('示例生成失败：' + (err.message || ''));
+  }
+}
+$('demoDuckBtn').addEventListener('click', () => loadDemo(buildDuckDemo, '示例 · 小鸭子', 'DEMO'));
+$('demoRobotBtn').addEventListener('click', () => loadDemo(buildRobotDemo, '示例 · 跳舞机器人', 'DEMO+ANIM'));
+
+/* ---------- 万能加载：5 格式输入 · 多文件 Blob URL 映射（附属资源不落盘） ---------- */
+const MAIN_EXTS = ['glb', 'gltf', 'fbx', 'obj', 'stl', 'ply'];
+function basenameOf(url){ return decodeURI(url.split('?')[0]).replace(/^.*[\/\\]/, '').toLowerCase(); }
+
+function buildManager(urlMap){
+  const mgr = new THREE.LoadingManager();
+  mgr.setURLModifier(url => {
+    const base = basenameOf(url);
+    return urlMap[base] || url;
+  });
+  mgr.addHandler(/\.tga$/i, new TGALoader());
+  return mgr;
+}
+
+function loadFiles(fileList){
+  const files = [...fileList];
+  if(!files.length) return;
+  let main = null;
+  for(const ext of MAIN_EXTS){
+    main = files.find(f => f.name.toLowerCase().endsWith('.' + ext));
+    if(main) break;
+  }
+  if(!main){ showToast('未找到模型主文件（支持 GLB / glTF / STL / OBJ / FBX / PLY）'); return; }
+  const ext = main.name.toLowerCase().split('.').pop();
+  const urlMap = {};
+  const urls = [];
+  for(const f of files){
+    const u = URL.createObjectURL(f);
+    urls.push(u);
+    urlMap[f.name.toLowerCase()] = u;
+  }
+  const mainUrl = urlMap[main.name.toLowerCase()];
+  const mgr = buildManager(urlMap);
+  const fileMeta = { name: main.name, size: files.reduce((n, f) => n + f.size, 0) };
+  const onProgress = e => {
+    const pct = (e && e.lengthComputable && e.total > 0) ? ` ${Math.round(e.loaded / e.total * 100)}%` : '';
+    showLoader(true, `载入 ${main.name} …${pct}`);
+  };
+  const fail = err => {
+    showLoader(false); setStatus(false, '载入失败'); console.error(err);
+    showToast('模型解析失败：' + ((err && err.message) || '文件不完整或格式不正确'));
+  };
+  const done = (root, clips, fmtLabel) => {
+    showLoader(false);
+    setTimeout(() => urls.forEach(u => URL.revokeObjectURL(u)), 30000); /* 贴图异步解码完成后释放 */
+    try{ applyModel(root, clips || [], fileMeta, fmtLabel); }
+    catch(err){ console.error(err); setStatus(false, '载入失败'); showToast('模型载入失败：' + (err.message || '')); }
+  };
+  setStatus(true, '载入中…');
+  showLoader(true, `载入 ${main.name} …`);
+  try{
+    if(ext === 'glb' || ext === 'gltf'){
+      const loader = new GLTFLoader(mgr);
+      loader.setDRACOLoader(dracoLoader);
+      loader.setKTX2Loader(ktx2Loader);
+      loader.load(mainUrl, gltf => done(gltf.scene || (gltf.scenes && gltf.scenes[0]), gltf.animations, ext.toUpperCase()), onProgress, fail);
+    } else if(ext === 'stl'){
+      new STLLoader(mgr).load(mainUrl, geo => {
+        geo.computeVertexNormals();
+        const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.6, metalness: 0 }));
+        const g = new THREE.Group(); g.add(mesh);
+        done(g, [], 'STL');
+      }, onProgress, fail);
+    } else if(ext === 'ply'){
+      new PLYLoader(mgr).load(mainUrl, geo => {
+        geo.computeVertexNormals();
+        const hasColor = !!geo.attributes.color;
+        const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.6, metalness: 0, vertexColors: hasColor }));
+        const g = new THREE.Group(); g.add(mesh);
+        done(g, [], 'PLY');
+      }, onProgress, fail);
+    } else if(ext === 'obj'){
+      const mtlFile = files.find(f => /\.mtl$/i.test(f.name));
+      const objLoader = new OBJLoader(mgr);
+      const go = () => objLoader.load(mainUrl, obj => done(obj, [], mtlFile ? 'OBJ+MTL' : 'OBJ'), onProgress, fail);
+      if(mtlFile){
+        new MTLLoader(mgr).load(urlMap[mtlFile.name.toLowerCase()], mats => {
+          mats.preload();
+          objLoader.setMaterials(mats);
+          go();
+        }, undefined, () => { showToast('MTL 解析失败，使用默认材质'); go(); });
+      } else {
+        showToast('未配 .mtl 文件，将显示默认材质');
+        go();
+      }
+    } else if(ext === 'fbx'){
+      new FBXLoader(mgr).load(mainUrl, obj => done(obj, obj.animations, 'FBX'), onProgress, fail);
+    } else {
+      fail(new Error('不支持的格式'));
+    }
+  }catch(err){ fail(err); }
+}
+
+/* ---------- 交互绑定 ---------- */
+$('uploadBtn').addEventListener('click', () => $('fileInput').click());
+$('emptyState').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', e => { loadFiles(e.target.files); e.target.value = ''; });
+
+const dropOverlay = $('dropOverlay');
+let dragDepth = 0;
+window.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; dropOverlay.classList.add('show'); });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('dragleave', e => { e.preventDefault(); if(--dragDepth <= 0){ dragDepth = 0; dropOverlay.classList.remove('show'); } });
+window.addEventListener('drop', e => {
+  e.preventDefault(); dragDepth = 0; dropOverlay.classList.remove('show');
+  if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files);
+});
+
+/* 动画控制 */
+$('animSelect').addEventListener('change', e => { if(!e.target.disabled) selectClip(+e.target.value); });
+$('playBtn').addEventListener('click', () => {
+  if(!activeAction) return;
+  playing = !playing;
+  activeAction.paused = !playing;
+  setPlayIcon(playing);
+});
+document.querySelectorAll('[data-speed]').forEach(b => {
+  b.addEventListener('click', () => {
+    if(activeAction) activeAction.timeScale = +b.dataset.speed;
+    document.querySelectorAll('[data-speed]').forEach(x => x.classList.toggle('active', x === b));
+  });
+});
+const progEl = $('animProgress');
+progEl.addEventListener('pointerdown', () => { if(!progEl.disabled) seeking = true; });
+progEl.addEventListener('pointerup', () => { seeking = false; });
+progEl.addEventListener('input', e => {
+  if(!activeAction || progEl.disabled) return;
+  const k = parseFloat(e.target.value);
+  const clip = activeAction.getClip();
+  activeAction.time = k * clip.duration;
+  if(mixer) mixer.update(0);
+  $('animTime').textContent = `${activeAction.time.toFixed(2)}s / ${clip.duration.toFixed(2)}s`;
+  e.target.style.setProperty('--p', (k * 100) + '%');
+});
+
+/* 显示设置 */
+$('gridToggle').addEventListener('change', e => { gridGroup.visible = e.target.checked; });
+$('autoRotateToggle').addEventListener('change', e => { controls.autoRotate = e.target.checked; });
+$('wireToggle').addEventListener('change', e => { setWireframe(e.target.checked); });
+const envEl = $('envSlider'), envVal = $('envVal');
+function updateEnv(){ const v = parseFloat(envEl.value); envVal.textContent = v.toFixed(1); envEl.style.setProperty('--p', (v / 3 * 100) + '%'); setEnvIntensity(v); }
+envEl.addEventListener('input', updateEnv); updateEnv();
+
+/* 视图 */
+$('vpReset').addEventListener('click', () => { camera.position.set(0, 1.2, 6); controls.target.set(0, 0, 0); controls.update(); });
+$('vpFront').addEventListener('click', () => setView([0, 0, 1]));
+$('vpTop').addEventListener('click', () => setView([0, 1, 0.001]));
+$('vpFit').addEventListener('click', fitView);
+
+/* ---------- 环境与相机（C1） ---------- */
+const LIGHT_PRESETS = {
+  studio: { key: 1.2, fill: 0.4, amb: 0.4 },
+  soft:   { key: 0.65, fill: 0.6, amb: 0.75 },
+  dark:   { key: 1.9, fill: 0.06, amb: 0.07 },
+};
+function applyLightPreset(k){
+  const p = LIGHT_PRESETS[k];
+  if(!p) return;
+  key.intensity = p.key; fill.intensity = p.fill; ambient.intensity = p.amb;
+  document.querySelectorAll('#lightPresetRow .pill').forEach(b => b.classList.toggle('active', b.dataset.light === k));
+}
+document.querySelectorAll('#lightPresetRow .pill').forEach(b => b.addEventListener('click', () => applyLightPreset(b.dataset.light)));
+applyLightPreset('studio');
+
+function setBgColor(c){
+  scene.background = new THREE.Color(c);
+}
+document.querySelectorAll('#bgRow [data-bg]').forEach(b => b.addEventListener('click', () => {
+  setBgColor(b.dataset.bg);
+  $('bgColor').value = b.dataset.bg;
+  document.querySelectorAll('#bgRow [data-bg]').forEach(x => x.classList.toggle('active', x === b));
+}));
+$('bgColor').addEventListener('input', e => {
+  setBgColor(e.target.value);
+  document.querySelectorAll('#bgRow [data-bg]').forEach(x => x.classList.remove('active'));
+});
+
+const expEl = $('exposureSlider'), expVal = $('exposureVal');
+function updateExposure(){ const v = parseFloat(expEl.value); expVal.textContent = v.toFixed(2); expEl.style.setProperty('--p', ((v - 0.2) / 1.8 * 100) + '%'); renderer.toneMappingExposure = v; }
+expEl.addEventListener('input', updateExposure); updateExposure();
+
+const fovEl = $('fovSlider'), fovVal = $('fovVal');
+function updateFov(){ const v = parseFloat(fovEl.value); fovVal.textContent = v.toFixed(0) + '°'; fovEl.style.setProperty('--p', ((v - 20) / 80 * 100) + '%'); camera.fov = v; camera.updateProjectionMatrix(); }
+fovEl.addEventListener('input', updateFov); updateFov();
+
+/* 双击聚焦：raycast 命中点设为轨道中心（相机保持相对偏移） */
+const raycaster = new THREE.Raycaster();
+canvas.addEventListener('dblclick', e => {
+  if(!currentModel) return;
+  const rect = canvas.getBoundingClientRect();
+  const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObjects(modelGroup.children, true);
+  if(hits.length){
+    const p = hits[0].point;
+    const off = camera.position.clone().sub(controls.target);
+    controls.target.copy(p);
+    camera.position.copy(p).add(off);
+    controls.update();
+  }
+});
+
+/* 键盘快捷键：空格=播放暂停 · F=适配 · G=网格 · W=线框 · R=复位 */
+window.addEventListener('keydown', e => {
+  if(e.target && /^(input|textarea|select)$/i.test(e.target.tagName)) return;
+  if(e.code === 'Space'){
+    e.preventDefault();
+    if(activeAction){ playing = !playing; activeAction.paused = !playing; setPlayIcon(playing); }
+  } else if(e.code === 'KeyF'){
+    fitView();
+  } else if(e.code === 'KeyG'){
+    const t = $('gridToggle'); t.checked = !t.checked; gridGroup.visible = t.checked;
+  } else if(e.code === 'KeyW'){
+    const t = $('wireToggle'); t.checked = !t.checked; setWireframe(t.checked);
+  } else if(e.code === 'KeyR'){
+    camera.position.set(0, 1.2, 6); controls.target.set(0, 0, 0); controls.update();
+  }
+});
+
+/* ---------- 格式转换（导出） ---------- */
+let convFmt = 'glb';
+function updateConvWarn(){
+  const w = $('convWarn'), btn = $('convertBtn');
+  if(!currentModel){ w.className = 'conv-warn'; w.textContent = ''; btn.disabled = true; return; }
+  btn.disabled = false;
+  const msgs = [];
+  const FMT_NAME = { glb: 'GLB', stl: 'STL', obj: 'OBJ', ply: 'PLY', usdz: 'USDZ' };
+  if(convFmt === 'stl'){
+    if(currentCaps.hasMat) msgs.push(`导出 ${FMT_NAME.stl}：将丢失全部材质与贴图，仅保留几何`);
+    if(currentCaps.hasAnim) msgs.push(`将丢失 ${currentClips.length} 条动画`);
+  } else if(convFmt === 'obj' || convFmt === 'ply'){
+    if(convFmt === 'obj' && currentCaps.hasMat) msgs.push('贴图不会打包进 OBJ，需另行携带 .mtl 与贴图文件');
+    if(currentCaps.hasAnim) msgs.push(`将丢失 ${currentClips.length} 条动画`);
+  } else if(convFmt === 'glb'){
+    if(!currentCaps.hasMat) msgs.push('源模型无材质信息，将使用默认灰材质');
+  } else if(convFmt === 'usdz'){
+    if(currentCaps.hasAnim) msgs.push('USDZ 为静态 AR 格式，动画不导出');
+    if(!currentCaps.hasMat) msgs.push('源模型无材质信息，将使用默认灰材质');
+  }
+  w.textContent = msgs.join('；');
+  w.className = msgs.length ? 'conv-warn show' : 'conv-warn';
+}
+document.querySelectorAll('#convFmtRow .pill').forEach(b => b.addEventListener('click', () => {
+  convFmt = b.dataset.fmt;
+  document.querySelectorAll('#convFmtRow .pill').forEach(x => x.classList.toggle('active', x === b));
+  updateConvWarn();
+}));
+
+function downloadBlob(blob, filename){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+/* Phong/Lambert/Basic → Standard（GLTFExporter 仅支持 PBR 材质） */
+function toStandardMaterials(root){
+  root.traverse(node => {
+    if(!node.isMesh && !node.isSkinnedMesh) return;
+    const list = Array.isArray(node.material) ? node.material : [node.material];
+    const converted = list.map(m => {
+      if(!m || m.isMeshStandardMaterial || m.isMeshPhysicalMaterial) return m;
+      const std = new THREE.MeshStandardMaterial({
+        color: m.color ? m.color.clone() : new THREE.Color(0x9ca3af),
+        map: m.map || null,
+        normalMap: m.normalMap || null,
+        transparent: !!m.transparent,
+        opacity: m.opacity !== undefined ? m.opacity : 1,
+        side: m.side !== undefined ? m.side : THREE.FrontSide,
+        vertexColors: !!m.vertexColors,
+      });
+      const shininess = m.shininess !== undefined ? m.shininess : 30;
+      std.roughness = THREE.MathUtils.clamp(1 - shininess / 100, 0.05, 1);
+      std.metalness = 0;
+      if(m.emissive) std.emissive = m.emissive.clone();
+      return std;
+    });
+    node.material = Array.isArray(node.material) ? converted : converted[0];
+  });
+}
+
+async function doConvert(){
+  if(!currentModel){ showToast('请先载入模型'); return; }
+  const fmt = convFmt;
+  setStatus(true, '导出 ' + fmt.toUpperCase() + '…');
+  try{
+    /* 克隆 + 恢复原始变换（导出尺寸 = 统计面板显示的原始尺寸） */
+    let skinned = false;
+    currentModel.traverse(n => { if(n.isSkinnedMesh) skinned = true; });
+    const root = skinned ? skeletonClone(currentModel) : currentModel.clone(true);
+    const o = currentModel.userData._orig;
+    if(o){ root.scale.set(o.sx, o.sy, o.sz); root.position.set(o.px, o.py, o.pz); }
+    const name = baseName($('fileName').textContent !== '-' ? $('fileName').textContent : 'model');
+    if(fmt === 'glb'){
+      toStandardMaterials(root);
+      const buf = await new Promise((res, rej) => new GLTFExporter().parse(root, res, rej, { binary: true, animations: currentClips }));
+      downloadBlob(new Blob([buf], { type: 'model/gltf-binary' }), name + '.glb');
+      showToast('已导出 GLB' + (currentClips.length ? `（含 ${currentClips.length} 条动画）` : ''));
+    } else if(fmt === 'stl'){
+      const dv = new STLExporter().parse(root, { binary: true });
+      downloadBlob(new Blob([dv], { type: 'model/stl' }), name + '.stl');
+      showToast('已导出 STL（几何）');
+    } else if(fmt === 'obj'){
+      const txt = new OBJExporter().parse(root);
+      downloadBlob(new Blob([txt], { type: 'text/plain' }), name + '.obj');
+      showToast('已导出 OBJ（如需材质请另行保存 .mtl）');
+    } else if(fmt === 'ply'){
+      const buf = await new Promise((res, rej) => new PLYExporter().parse(root, res, { binary: true }, rej));
+      downloadBlob(new Blob([buf], { type: 'model/ply' }), name + '.ply');
+      showToast('已导出 PLY');
+    } else if(fmt === 'usdz'){
+      toStandardMaterials(root);
+      const buf = await new USDZExporter().parseAsync(root);
+      downloadBlob(new Blob([buf], { type: 'model/vnd.usdz+zip' }), name + '.usdz');
+      showToast('已导出 USDZ（iOS AR）');
+    }
+  }catch(err){
+    console.error(err);
+    showToast('导出失败：' + (err.message || ''));
+  }finally{
+    setStatus(false, currentModel ? '就绪 · ' + $('fileName').textContent : '等待模型');
+  }
+}
+$('convertBtn').addEventListener('click', doConvert);
+
+/* ---------- 高清截图（2x drawing buffer） ---------- */
+$('shotBtn').addEventListener('click', () => {
+  if(!currentModel){ showToast('请先载入模型'); return; }
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(dpr * 2);
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+  const off = document.createElement('canvas');
+  off.width = w * dpr * 2; off.height = h * dpr * 2;
+  off.getContext('2d').drawImage(canvas, 0, 0, off.width, off.height);
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+  const name = (currentModel && currentModel.userData && currentModel.userData.name) || 'model';
+  off.toBlob(blob => {
+    if(!blob){ showToast('截图失败'); return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (baseName($('fileName').textContent !== '-' ? $('fileName').textContent : 'model')) + '-shot.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    showToast(`已保存高清截图 (${off.width}×${off.height})`);
+  }, 'image/png');
+});
+
+/* ---------- 启动 ---------- */
+resize(); animate();
+setStatus(false, '等待模型 · 拖入 GLB / STL / OBJ / FBX / PLY 开始');
+</script>
+</body>
+</html>
