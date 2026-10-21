@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%232997FF'/><path d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z' fill='none' stroke='white' stroke-width='2'/><polyline points='3.27 6.96 12 12.01 20.73 6.96' fill='none' stroke='white' stroke-width='2'/><line x1='12' y1='22.08' x2='12' y2='12' stroke='white' stroke-width='2'/></svg>">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- 上线后改为绝对 URL：https://<用户名>.github.io/3d-tools/og-image.png -->
+<meta property="og:image" content="og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="description" content="3D 创作工具箱：文字转 3D 立体文字生成器 + 3D 模型查看与格式转换，全部在浏览器本地运行，零安装、不上传。">
 <meta property="og:title" content="3D 创作工具箱 · 文字转 3D 与模型查看转换">
 <meta property="og:description" content="输入文字实时生成 3D 模型；拖入 GLB/STL/OBJ/FBX 即时预览与格式互转。纯前端工具，文件不离开本机。">
@@ -377,6 +383,15 @@
     document.body.appendChild(s);
   }
   (async function(){
+    if(!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'))){
+      var el = document.getElementById('cdn-fail');
+      if(el){
+        el.style.display = 'grid';
+        var h3 = el.querySelector('h3'); if(h3) h3.textContent = '浏览器版本过旧';
+        var p = el.querySelector('p'); if(p) p.innerHTML = '当前浏览器不支持 import maps（需 Chrome 89+ / Edge 89+ / Safari 16.4+ / Firefox 108+）<br/>请升级浏览器后重试';
+      }
+      return;
+    }
     for(var i = 0; i < window.__CDN_BASES.length; i++){
       try{ await import(window.__CDN_BASES[i] + '/build/three.module.js'); boot(window.__CDN_BASES[i]); return; }
       catch(e){ console.warn('CDN 不可达，尝试下一源：', window.__CDN_BASES[i]); }

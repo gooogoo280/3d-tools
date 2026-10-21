@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%232997FF'/><path d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z' fill='none' stroke='white' stroke-width='2'/><polyline points='3.27 6.96 12 12.01 20.73 6.96' fill='none' stroke='white' stroke-width='2'/><line x1='12' y1='22.08' x2='12' y2='12' stroke='white' stroke-width='2'/></svg>">
 <meta name="description" content="在线文字转 3D 工具：输入中英文实时生成立体文字模型，支持挤出深度、倒角、弯曲弧度、金属霓虹材质，导出 GLB/STL/OBJ 用于 3D 打印与网页展示，SVG 图形转 3D，旋转动画 GIF/视频导出。">
 <meta property="og:title" content="文字转 3D · 立体文字生成器">
 <meta property="og:description" content="输入文字实时生成 3D 模型：挤出/倒角/弯曲/材质全参数可调，导出 GLB/STL/OBJ 直接 3D 打印。">
@@ -341,6 +342,17 @@
     document.body.appendChild(s);
   }
   (async function(){
+    if(!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'))){
+      var el = document.getElementById('cdn-fail');
+      if(el){
+        el.style.display = 'grid';
+        var h3 = el.querySelector('h3'); if(h3) h3.textContent = '浏览器版本过旧';
+        var p = el.querySelector('p'); if(p) p.innerHTML = '当前浏览器不支持 import maps（需 Chrome 89+ / Edge 89+ / Safari 16.4+ / Firefox 108+）<br/>请升级浏览器后重试';
+      }
+      var st = document.getElementById('statusText');
+      if(st) st.textContent = '浏览器过旧';
+      return;
+    }
     for(var i = 0; i < window.__CDN_BASES.length; i++){
       try{ await import(window.__CDN_BASES[i] + '/build/three.module.js'); boot(window.__CDN_BASES[i]); return; }
       catch(e){ console.warn('CDN 不可达，尝试下一源：', window.__CDN_BASES[i]); }
@@ -366,13 +378,14 @@ let opentype = null;
 for(const _u of OPENTYPE_URLS){ try{ opentype = (await import(_u)).default; break; }catch(e){ console.warn('opentype 源不可达：', _u); } }
 if(!opentype){ document.getElementById('cdn-fail').style.display = 'grid'; throw new Error('opentype.js 全源加载失败'); }
 
-/* ---------- 字体 ---------- */
-const FONT_BASE = 'https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/';
+/* ---------- 字体（锁定版本化 release：上游 @main 目录重组不影响可用性） ---------- */
+const FONT_BASE_SANS = 'https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@Sans2.004/Sans/SubsetOTF/SC/';
+const FONT_BASE_SERIF = 'https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@Serif2.003/Serif/SubsetOTF/SC/';
 const FONTS = {
-  'sans':       { name:'思源黑体',      url: FONT_BASE + 'Sans/SubsetOTF/SC/NotoSansSC-Regular.otf' },
-  'sans-bold':  { name:'思源黑体 Bold', url: FONT_BASE + 'Sans/SubsetOTF/SC/NotoSansSC-Bold.otf' },
-  'serif':      { name:'思源宋体',      url: FONT_BASE + 'Serif/SubsetOTF/SC/NotoSerifSC-Regular.otf' },
-  'serif-bold': { name:'思源宋体 Bold', url: FONT_BASE + 'Serif/SubsetOTF/SC/NotoSerifSC-Bold.otf' },
+  'sans':       { name:'思源黑体',      url: FONT_BASE_SANS + 'NotoSansSC-Regular.otf' },
+  'sans-bold':  { name:'思源黑体 Bold', url: FONT_BASE_SANS + 'NotoSansSC-Bold.otf' },
+  'serif':      { name:'思源宋体',      url: FONT_BASE_SERIF + 'NotoSerifSC-Regular.otf' },
+  'serif-bold': { name:'思源宋体 Bold', url: FONT_BASE_SERIF + 'NotoSerifSC-Bold.otf' },
 };
 
 /* ---------- 状态（默认为最基础的原始状态，参数由用户自行调整） ---------- */
@@ -427,7 +440,7 @@ let textMaterial = null;
 /* ---------- 工具 ---------- */
 function setStatus(busy, text){ statusDot.classList.toggle('busy', busy); statusText.textContent = text; }
 function showLoader(show, text){ loader.classList.toggle('show', show); if(text) loaderText.textContent = text; }
-function showToast(msg){ toastText.textContent = msg; toast.classList.add('show'); clearTimeout(showToast._t); showToast._t = setTimeout(()=>toast.classList.remove('show'), 2200); }
+function showToast(msg, ms){ toastText.textContent = msg; toast.classList.add('show'); clearTimeout(showToast._t); showToast._t = setTimeout(()=>toast.classList.remove('show'), ms || 2200); }
 function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; }
 
 /* ---------- IndexedDB 字体缓存 ---------- */
@@ -862,7 +875,7 @@ function exportGLB(){
   const exporter = new GLTFExporter();
   exporter.parse(makeExportGroup(), (result) => {
     download(new Blob([result], { type:'model/gltf-binary' }), safeName() + '.glb');
-    setStatus(false, '就绪'); showToast(`已导出 GLB（宽 ${targetMM().toFixed(0)}mm）`);
+    setStatus(false, '就绪'); showToast(`已导出 GLB（宽 ${targetMM().toFixed(0)}mm）· 拖入本站"3D 模型查看"可预览与转格式`, 5200);
   }, (err) => { setStatus(false, '就绪'); showToast('导出失败'); console.error(err); }, { binary:true });
 }
 function exportSTL(){
@@ -870,7 +883,7 @@ function exportSTL(){
   if(!textGroup.children.length){ showToast('请先输入文字'); return; }
   const out = new STLExporter().parse(makeExportGroup(), { binary:true });
   download(new Blob([out], { type:'application/octet-stream' }), safeName() + '.stl');
-  showToast(`已导出 STL（宽 ${targetMM().toFixed(0)}mm）`);
+  showToast(`已导出 STL（宽 ${targetMM().toFixed(0)}mm）· 毫米已标定，可直接发送打印店`, 5200);
 }
 function exportOBJ(){
   if(recording){ showToast('动画录制中，请稍候'); return; }

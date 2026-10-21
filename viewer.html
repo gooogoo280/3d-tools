@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%232997FF'/><path d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z' fill='none' stroke='white' stroke-width='2'/><polyline points='3.27 6.96 12 12.01 20.73 6.96' fill='none' stroke='white' stroke-width='2'/><line x1='12' y1='22.08' x2='12' y2='12' stroke='white' stroke-width='2'/></svg>">
 <meta name="description" content="在线 3D 模型查看与格式转换工具：拖入 GLB、glTF、STL、OBJ、FBX、PLY 即时预览，支持动画播放、模型统计、灯光相机控制，一键转换导出 GLB/STL/OBJ/PLY/USDZ，全程本地处理不上传。">
 <meta property="og:title" content="3D 模型查看与格式转换 · 在线工具">
 <meta property="og:description" content="GLB/STL/OBJ/FBX/PLY 拖入即看，动画播放 + 模型统计 + 五格式互转，iOS AR 导出，文件不离开本机。">
@@ -360,6 +361,17 @@
     document.body.appendChild(s);
   }
   (async function(){
+    if(!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'))){
+      var el = document.getElementById('cdn-fail');
+      if(el){
+        el.style.display = 'grid';
+        var h3 = el.querySelector('h3'); if(h3) h3.textContent = '浏览器版本过旧';
+        var p = el.querySelector('p'); if(p) p.innerHTML = '当前浏览器不支持 import maps（需 Chrome 89+ / Edge 89+ / Safari 16.4+ / Firefox 108+）<br/>请升级浏览器后重试';
+      }
+      var st = document.getElementById('statusText');
+      if(st) st.textContent = '浏览器过旧';
+      return;
+    }
     for(var i = 0; i < window.__CDN_BASES.length; i++){
       try{ await import(window.__CDN_BASES[i] + '/build/three.module.js'); boot(window.__CDN_BASES[i]); return; }
       catch(e){ console.warn('CDN 不可达，尝试下一源：', window.__CDN_BASES[i]); }
@@ -394,7 +406,7 @@ const toast = $('toast'), toastText = $('toastText');
 const loaderEl = $('loader'), loaderText = $('loaderText');
 
 function setStatus(busy, text){ statusDot.classList.toggle('busy', busy); statusText.textContent = text; }
-function showToast(msg){ toastText.textContent = msg; toast.classList.add('show'); clearTimeout(showToast._t); showToast._t = setTimeout(()=>toast.classList.remove('show'), 2600); }
+function showToast(msg, ms){ toastText.textContent = msg; toast.classList.add('show'); clearTimeout(showToast._t); showToast._t = setTimeout(()=>toast.classList.remove('show'), ms || 2600); }
 function showLoader(show, text){ loaderText.textContent = text || '解析模型…'; loaderEl.classList.toggle('show', !!show); }
 function fmtSize(bytes){
   if(bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' MB';
@@ -851,9 +863,37 @@ let dragDepth = 0;
 window.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; dropOverlay.classList.add('show'); });
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('dragleave', e => { e.preventDefault(); if(--dragDepth <= 0){ dragDepth = 0; dropOverlay.classList.remove('show'); } });
+/* 文件夹拖入支持：webkitGetAsEntry 递归展开（Blender 导出的 glTF 常是"主文件+bin+贴图"文件夹） */
+async function filesFromDataTransfer(dt){
+  if(dt.items && dt.items.length && dt.items[0].webkitGetAsEntry){
+    const entries = [];
+    for(const item of dt.items){
+      const entry = item.webkitGetAsEntry && item.webkitGetAsEntry();
+      if(entry) entries.push(entry);
+    }
+    if(entries.length){
+      const files = [];
+      const walk = entry => new Promise(res => {
+        if(entry.isFile) entry.file(f => { files.push(f); res(); }, () => res());
+        else if(entry.isDirectory){
+          const reader = entry.createReader();
+          const readAll = () => reader.readEntries(async batch => {
+            if(!batch.length){ res(); return; }
+            for(const e of batch) await walk(e);
+            readAll();
+          }, () => res());
+          readAll();
+        } else res();
+      });
+      for(const e of entries) await walk(e);
+      if(files.length) return files;
+    }
+  }
+  return dt.files ? [...dt.files] : [];
+}
 window.addEventListener('drop', e => {
   e.preventDefault(); dragDepth = 0; dropOverlay.classList.remove('show');
-  if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files);
+  if(e.dataTransfer) filesFromDataTransfer(e.dataTransfer).then(list => { if(list.length) loadFiles(list); });
 });
 
 /* 动画控制 */
@@ -1046,11 +1086,11 @@ async function doConvert(){
       toStandardMaterials(root);
       const buf = await new Promise((res, rej) => new GLTFExporter().parse(root, res, rej, { binary: true, animations: currentClips }));
       downloadBlob(new Blob([buf], { type: 'model/gltf-binary' }), name + '.glb');
-      showToast('已导出 GLB' + (currentClips.length ? `（含 ${currentClips.length} 条动画）` : ''));
+      showToast('已导出 GLB' + (currentClips.length ? `（含 ${currentClips.length} 条动画）` : '') + ' · 可拖回本页预览；发给朋友请对方拖入本站查看器打开', 5200);
     } else if(fmt === 'stl'){
       const dv = new STLExporter().parse(root, { binary: true });
       downloadBlob(new Blob([dv], { type: 'model/stl' }), name + '.stl');
-      showToast('已导出 STL（几何）');
+      showToast('已导出 STL · 按统计面板尺寸（单位视为 mm），可直接发送打印店', 5200);
     } else if(fmt === 'obj'){
       const txt = new OBJExporter().parse(root);
       downloadBlob(new Blob([txt], { type: 'text/plain' }), name + '.obj');
@@ -1061,9 +1101,9 @@ async function doConvert(){
       showToast('已导出 PLY');
     } else if(fmt === 'usdz'){
       toStandardMaterials(root);
-      const buf = await new USDZExporter().parseAsync(root);
+      const buf = await new USDZExporter().parse(root);
       downloadBlob(new Blob([buf], { type: 'model/vnd.usdz+zip' }), name + '.usdz');
-      showToast('已导出 USDZ（iOS AR）');
+      showToast('已导出 USDZ · AirDrop 到 iPhone，用"文件"或 Safari 打开即看 AR', 5600);
     }
   }catch(err){
     console.error(err);
