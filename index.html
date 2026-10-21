@@ -7,7 +7,7 @@
 <meta property="og:title" content="3D 创作工具箱 · 文字转 3D 与模型查看转换">
 <meta property="og:description" content="输入文字实时生成 3D 模型；拖入 GLB/STL/OBJ/FBX 即时预览与格式互转。纯前端工具，文件不离开本机。">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#0F1216">
+<meta name="theme-color" content="#000000">
 <title>3D 创作工具箱 · 文字转 3D 与模型查看转换</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,143 +15,299 @@
 <link href="https://fonts.loli.net/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0F1216; --panel:#15181D; --border:#262B31; --border-strong:#3A4048;
-    --text:#E8EAED; --text-dim:#9AA0A6; --text-faint:#666C74;
-    --accent:#2563EB; --accent-glow:rgba(37,99,235,0.32);
+    --bg:#000000; --panel:#0F1216; --card:#1B1F25;
+    --border:rgba(255,255,255,0.09); --border-strong:rgba(255,255,255,0.18);
+    --text:#F5F5F7; --text-dim:#A1A1A6; --text-faint:#666C74;
+    --accent:#2997FF; --accent-deep:#0071E3; --accent-glow:rgba(41,151,255,0.35);
     --mono:'JetBrains Mono',ui-monospace,monospace;
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  html,body{height:100%}
+  html{scroll-behavior:smooth}
   body{
     font-family:'Inter','PingFang SC','Microsoft YaHei',sans-serif;
     background:var(--bg); color:var(--text);
-    display:flex; flex-direction:column; min-height:100vh;
-    -webkit-font-smoothing:antialiased;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
   }
-  .crumb{
-    display:flex; align-items:center; gap:8px; padding:18px 32px;
-    font-family:var(--mono); font-size:10.5px; letter-spacing:0.08em; color:var(--text-faint);
-    border-bottom:1px solid var(--border);
+  h1,h2,h3{font-weight:700;letter-spacing:-0.015em}
+
+  /* ─── 粘性导航（毛玻璃，滚动加深） ─────────── */
+  .nav{
+    position:fixed; top:0; left:0; right:0; z-index:50;
+    height:52px; display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,0.65); backdrop-filter:blur(14px) saturate(1.4);
+    border-bottom:1px solid transparent; transition:border-color .3s;
   }
-  .crumb .dot{width:3px;height:3px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent-glow)}
-  main{flex:1; display:grid; place-items:center; padding:48px 24px}
-  .portal{max-width:860px; width:100%}
-  .hero{text-align:center; margin-bottom:52px}
-  .hero-mark{
-    width:56px; height:56px; border-radius:15px; margin:0 auto 22px;
-    background:linear-gradient(135deg,#2563EB,#3B82F6);
-    display:grid; place-items:center; position:relative; overflow:hidden;
-    box-shadow:0 0 0 1px rgba(255,255,255,0.4) inset, 0 12px 32px -8px var(--accent-glow);
+  .nav.scrolled{border-bottom-color:var(--border)}
+  .nav-inner{
+    max-width:1020px; width:100%; padding:0 22px;
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:13px;
   }
-  .hero-mark svg{width:28px; height:28px}
-  .hero-mark::after{
-    content:""; position:absolute; inset:0;
-    background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,0.35) 50%,transparent 70%);
-    transform:translateX(-120%); animation:shimmer 4.5s ease-in-out infinite;
-  }
-  @keyframes shimmer{0%,100%{transform:translateX(-120%)}50%{transform:translateX(120%)}}
-  .hero h1{font-size:30px; font-weight:700; letter-spacing:-0.03em}
-  .hero p{font-family:var(--mono); font-size:12px; color:var(--text-dim); margin-top:8px; letter-spacing:0.06em}
-  .cards{display:grid; grid-template-columns:1fr 1fr; gap:20px}
-  @media(max-width:680px){ .cards{grid-template-columns:1fr} }
-  .card{
-    display:block; text-decoration:none; color:inherit;
-    background:var(--panel); border:1px solid var(--border); border-radius:16px;
-    padding:30px 28px 26px; position:relative; overflow:hidden;
-    transition:border-color .2s ease, transform .2s ease, box-shadow .2s ease;
-  }
-  .card:hover{
-    border-color:var(--accent); transform:translateY(-3px);
-    box-shadow:0 24px 60px -20px rgba(0,0,0,0.6);
-  }
-  .card:active{transform:translateY(-1px)}
-  .card-mark{
-    width:46px; height:46px; border-radius:12px; margin-bottom:20px;
+  .nav-logo{display:flex; align-items:center; gap:9px; color:var(--text); text-decoration:none; font-weight:600}
+  .nav-logo .mark{
+    width:24px; height:24px; border-radius:7px;
+    background:linear-gradient(135deg,#2997FF,#0071E3);
     display:grid; place-items:center;
-    background:rgba(59,130,246,0.14); color:#60A5FA;
-    transition:all .2s ease;
+    box-shadow:0 0 0 1px rgba(255,255,255,0.25) inset, 0 4px 14px -4px var(--accent-glow);
   }
-  .card:hover .card-mark{background:linear-gradient(135deg,#2563EB,#3B82F6); color:#fff; box-shadow:0 8px 24px -6px rgba(37,99,235,0.55)}
-  .card-mark svg{width:22px; height:22px}
-  .card h2{font-size:17px; font-weight:600; letter-spacing:-0.01em; display:flex; align-items:center; gap:8px}
-  .card h2 .tag{
-    font-family:var(--mono); font-size:9px; font-weight:500; letter-spacing:0.1em;
-    color:var(--text-faint); border:1px solid var(--border); border-radius:5px; padding:2px 6px;
+  .nav-logo .mark svg{width:13px;height:13px}
+  .nav-links{display:flex; gap:28px; align-items:center}
+  .nav-links a{color:var(--text-dim); text-decoration:none; transition:color .2s}
+  .nav-links a:hover{color:var(--text)}
+  @media(max-width:680px){ .nav-links a.hide-m{display:none} }
+
+  /* ─── Hero ─────────── */
+  .hero{
+    position:relative; min-height:100vh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:120px 24px 0; overflow:hidden;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 78%, rgba(41,151,255,0.16), transparent 70%),
+      radial-gradient(ellipse 45% 30% at 18% 22%, rgba(255,214,31,0.07), transparent 70%),
+      #000;
   }
-  .card p{font-size:12.5px; line-height:1.75; color:var(--text-dim); margin-top:10px; min-height:66px}
-  .card-view{
-    height:170px; margin-bottom:20px; border-radius:12px; overflow:hidden;
-    background:#15181D; border:1px solid var(--border); position:relative;
+  .hero-content{position:relative; z-index:2; max-width:820px}
+  .hero h1{
+    font-size:clamp(44px, 7vw, 76px); line-height:1.05; letter-spacing:-0.02em; font-weight:700;
+    background:linear-gradient(180deg,#FFFFFF 20%,#A8C7F0 95%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
   }
-  .card-view canvas{display:block; width:100%; height:100%}
-  .card-view .cv-tag{
-    position:absolute; bottom:8px; right:10px; font-family:var(--mono); font-size:9px;
-    color:var(--text-faint); letter-spacing:0.08em; background:rgba(15,18,22,0.7);
-    padding:2px 7px; border-radius:5px; border:1px solid var(--border);
+  .hero .sub{
+    margin-top:18px; font-size:clamp(19px, 2.6vw, 26px); font-weight:400;
+    color:var(--text-dim); line-height:1.25;
   }
-  .card .go{
-    display:inline-flex; align-items:center; gap:6px; margin-top:16px;
-    font-size:12px; font-weight:600; color:var(--accent);
-    transition:gap .2s ease;
+  .hero .sub b{color:var(--text); font-weight:500}
+  .cta-links{display:flex; gap:30px; justify-content:center; align-items:center; margin-top:26px; flex-wrap:wrap}
+  .cta-link{
+    font-size:19px; color:var(--accent); text-decoration:none;
+    letter-spacing:-0.022em; transition:color .2s;
   }
-  .card:hover .go{gap:11px}
-  .card .go svg{width:14px; height:14px}
-  footer{
-    padding:20px 32px; border-top:1px solid var(--border);
-    font-family:var(--mono); font-size:10.5px; color:var(--text-faint); letter-spacing:0.06em;
-    display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  .cta-link:hover{color:#66BBFF; text-decoration:underline}
+  .cta-link::after{content:'›'; font-size:20px; font-weight:600; margin-left:4px}
+  .cta-button{
+    display:inline-block; font-size:17px; font-weight:500; color:#fff;
+    background:var(--accent-deep); text-decoration:none;
+    padding:12px 30px; border-radius:980px;
+    box-shadow:0 8px 24px -8px var(--accent-glow); transition:background .2s, transform .2s;
+  }
+  .cta-button:hover{background:#0077ED; transform:translateY(-1px)}
+
+  .hero-stage{
+    position:relative; z-index:1; width:100%; max-width:1200px;
+    height:min(46vh, 430px); margin-top:-30px;
+  }
+  .hero-stage canvas{display:block; width:100%; height:100%}
+  .hero-hint{
+    position:relative; z-index:2; padding:0 0 34px;
+    font-family:var(--mono); font-size:11px; color:var(--text-faint); letter-spacing:0.08em;
   }
 
-  .cdn-fail{position:fixed;inset:0;z-index:100;display:none;place-items:center;background:var(--bg)}
-  .cdn-fail-box{text-align:center;padding:44px 56px;border:2px dashed #3A4048;border-radius:18px;background:#15181D}
-  .cdn-fail-box svg{width:44px;height:44px;color:#D97706;margin-bottom:16px}
-  .cdn-fail-box h3{font-size:15px;font-weight:600;margin-bottom:8px;color:var(--text)}
-  .cdn-fail-box p{font-size:12px;color:var(--text-dim);line-height:1.7}
+  /* ─── 产品卡区（两工具） ─────────── */
+  .products{background:var(--panel); border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:110px 24px 120px}
+  .section-head{text-align:center; max-width:760px; margin:0 auto 64px}
+  .section-title{font-size:clamp(36px, 5vw, 54px); line-height:1.08; letter-spacing:-0.015em}
+  .section-sub{margin-top:14px; font-size:clamp(17px, 2.2vw, 22px); color:var(--text-dim); line-height:1.3}
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:26px; max-width:1020px; margin:0 auto}
+  @media(max-width:860px){ .cards{grid-template-columns:1fr} }
+  .card{
+    display:flex; flex-direction:column;
+    background:var(--card); border:1px solid var(--border); border-radius:24px;
+    overflow:hidden; text-decoration:none; color:inherit;
+    transition:border-color .25s, transform .25s, box-shadow .25s;
+  }
+  .card:hover{border-color:rgba(41,151,255,0.55); transform:translateY(-4px); box-shadow:0 30px 70px -30px rgba(0,0,0,0.85)}
+  .card-view{height:240px; position:relative; background:radial-gradient(ellipse 80% 70% at 50% 60%, #1A2027, #0D1013)}
+  .card-view canvas{display:block; width:100%; height:100%}
+  .card-view .cv-tag{
+    position:absolute; bottom:10px; right:12px; font-family:var(--mono); font-size:9px;
+    color:var(--text-faint); letter-spacing:0.1em;
+    background:rgba(0,0,0,0.55); border:1px solid var(--border);
+    padding:3px 8px; border-radius:6px;
+  }
+  .card-body{padding:28px 30px 26px; display:flex; flex-direction:column; flex:1}
+  .card-tag{
+    font-family:var(--mono); font-size:10px; color:var(--accent);
+    letter-spacing:0.14em; margin-bottom:10px;
+  }
+  .card h2{font-size:24px; letter-spacing:-0.012em}
+  .card p{margin-top:10px; font-size:14px; line-height:1.75; color:var(--text-dim); flex:1}
+  .card .go{margin-top:18px; font-size:17px; color:var(--accent); font-weight:400}
+  .card .go:hover{text-decoration:underline}
+  .card .go::after{content:'›'; font-weight:600; margin-left:4px}
+
+  /* ─── 特性网格 ─────────── */
+  .features{background:var(--bg); padding:110px 24px 120px}
+  .grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:24px; overflow:hidden; max-width:1020px; margin:0 auto}
+  @media(max-width:860px){ .grid{grid-template-columns:1fr 1fr} }
+  @media(max-width:560px){ .grid{grid-template-columns:1fr} }
+  .feat{background:var(--bg); padding:34px 30px; transition:background .25s}
+  .feat:hover{background:#0A0D11}
+  .feat svg{width:26px; height:26px; color:var(--accent); margin-bottom:16px}
+  .feat b{display:block; font-size:16px; font-weight:600; margin-bottom:8px}
+  .feat p{font-size:13px; line-height:1.7; color:var(--text-dim)}
+
+  /* ─── 页脚 ─────────── */
+  footer{
+    background:var(--panel); border-top:1px solid var(--border);
+    padding:34px 24px 40px; text-align:center;
+    font-family:var(--mono); font-size:11px; color:var(--text-faint); letter-spacing:0.05em; line-height:2;
+  }
+  footer b{color:var(--text-dim); font-weight:500}
+
+  /* ─── 滚动入场动画（IntersectionObserver） ─────────── */
+  [data-animate]{opacity:0; transform:translateY(30px); transition:opacity .7s cubic-bezier(.25,.46,.45,.94), transform .7s cubic-bezier(.25,.46,.45,.94)}
+  [data-animate].animated{opacity:1; transform:translateY(0)}
+  [data-animate="scale"]{opacity:0; transform:scale(.95); transition:opacity .8s cubic-bezier(.25,.46,.45,.94), transform .8s cubic-bezier(.25,.46,.45,.94)}
+  [data-animate="scale"].animated{opacity:1; transform:scale(1)}
+  @media(prefers-reduced-motion:reduce){ [data-animate]{opacity:1; transform:none; transition:none} }
+
+  /* ─── CDN 全挂提示 ─────────── */
+  .cdn-fail{position:fixed; inset:0; z-index:100; display:none; place-items:center; background:var(--bg)}
+  .cdn-fail-box{text-align:center; padding:44px 56px; border:2px dashed #3A4048; border-radius:18px; background:#15181D}
+  .cdn-fail-box svg{width:44px; height:44px; color:#D97706; margin-bottom:16px}
+  .cdn-fail-box h3{font-size:15px; font-weight:600; margin-bottom:8px; color:var(--text)}
+  .cdn-fail-box p{font-size:12px; color:var(--text-dim); line-height:1.7}
 </style>
 </head>
 <body>
-  <div class="crumb"><span>workspace</span><span>/</span><span>portal</span><span style="margin-left:auto">3d-tools</span><span class="dot"></span></div>
 
-  <main>
-    <div class="portal">
-      <div class="hero">
-        <div class="hero-mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
-        <h1>3D 创作工具箱</h1>
-        <p>text-to-3d · viewer-converter · zero-install · web-native</p>
-      </div>
-
-      <div class="cards">
-        <a class="card" href="./text3d.html">
-          <div class="card-view"><canvas id="cvText"></canvas><span class="cv-tag">LIVE · WEBGL</span></div>
-          <div class="card-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></div>
-          <h2>文字转 3D <span class="tag">TEXT → 3D</span></h2>
-          <p>输入中英文实时生成立体模型：挤出深度、倒角、弯曲弧度、金属霓虹材质；导入 SVG 图形转 3D；导出 GLB / STL / OBJ 直接 3D 打印，可生成旋转动画与网页嵌入代码。</p>
-          <span class="go">进入工具<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-        </a>
-
-        <a class="card" href="./viewer.html">
-          <div class="card-view"><canvas id="cvViewer"></canvas><span class="cv-tag">LIVE · WEBGL</span></div>
-          <div class="card-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
-          <h2>3D 模型查看 <span class="tag">VIEWER · CONVERT</span></h2>
-          <p>拖入 GLB / glTF / STL / OBJ / FBX / PLY 即时预览：360° 旋转、骨骼动画播放、模型统计、灯光与相机控制；一键转换导出 GLB / STL / OBJ / PLY / USDZ（iOS AR），全程本地不上传。</p>
-          <span class="go">进入工具<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-        </a>
-      </div>
-    </div>
-  </main>
-
-  <footer>
-    <span>three.js r160 · glTF 2.0 · runs entirely in your browser</span>
-    <span>no upload · files never leave your device</span>
-  </footer>
-
-  <div class="cdn-fail" id="cdn-fail">
-    <div class="cdn-fail-box">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <h3>无法加载 3D 引擎</h3>
-      <p>所有 CDN 源均不可达（jsdelivr / fastly / unpkg）<br/>请检查网络连接后刷新重试</p>
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="#top">
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
+      3D 创作工具箱
+    </a>
+    <div class="nav-links">
+      <a href="#tool-text" class="hide-m">文字转 3D</a>
+      <a href="#tool-viewer" class="hide-m">模型查看</a>
+      <a href="#features" class="hide-m">功能特性</a>
+      <a href="#hero-cta">立即体验</a>
     </div>
   </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="hero-content">
+    <h1 data-animate>把想法，变成立体。</h1>
+    <p class="sub" data-animate data-delay="100">输入文字，实时生成 <b>3D 模型</b>；拖入文件，即刻<b>预览与转换</b>。<br/>无需安装任何软件，一切在你的浏览器里完成。</p>
+    <div class="cta-links" id="hero-cta" data-animate data-delay="200">
+      <a class="cta-button" href="#tool-text">开始创作</a>
+      <a class="cta-link" href="#features">了解功能</a>
+    </div>
+  </div>
+  <div class="hero-stage" data-animate="scale" data-delay="300"><canvas id="cvHero"></canvas></div>
+  <p class="hero-hint">WEBGL · LIVE RENDERING · 三源 CDN 容灾</p>
+</header>
+
+<section class="products" id="tools">
+  <div class="section-head">
+    <h2 class="section-title" data-animate>两款工具，一个工具箱。</h2>
+    <p class="section-sub" data-animate data-delay="100">从文字到模型，从模型到任何格式。</p>
+  </div>
+  <div class="cards">
+
+    <a class="card" id="tool-text" href="./text3d.html">
+      <div class="card-view" data-animate="scale">
+        <canvas id="cvText"></canvas><span class="cv-tag">LIVE · WEBGL</span>
+      </div>
+      <div class="card-body" data-animate data-delay="100">
+        <div class="card-tag">TEXT → 3D</div>
+        <h2>文字转 3D</h2>
+        <p>输入中英文实时生成立体模型：挤出深度、倒角、弯曲弧度（戒指刻字）、金属霓虹材质；导入 SVG 图形转 3D；导出 GLB / STL / OBJ 直接 3D 打印，一键生成旋转动画与网页嵌入代码。</p>
+        <span class="go">进入工具</span>
+      </div>
+    </a>
+
+    <a class="card" id="tool-viewer" href="./viewer.html">
+      <div class="card-view" data-animate="scale">
+        <canvas id="cvViewer"></canvas><span class="cv-tag">LIVE · WEBGL</span>
+      </div>
+      <div class="card-body" data-animate data-delay="100">
+        <div class="card-tag">VIEWER · CONVERT</div>
+        <h2>3D 模型查看与转换</h2>
+        <p>拖入 GLB / glTF / STL / OBJ / FBX / PLY 即时预览：360° 旋转、骨骼动画播放、模型统计、灯光与相机控制；一键转换导出 GLB / STL / OBJ / PLY / USDZ（iOS AR）。</p>
+        <span class="go">进入工具</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="section-head">
+    <h2 class="section-title" data-animate>快，而且安全。</h2>
+    <p class="section-sub" data-animate data-delay="100">为速度设计，为隐私而生。</p>
+  </div>
+  <div class="grid">
+    <div class="feat" data-animate>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <b>文件永不离开本机</b>
+      <p>全部解析、渲染、转换在浏览器本地完成，零上传。设计稿与未发布资产同样放心。</p>
+    </div>
+    <div class="feat" data-animate data-delay="80">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <b>五格式互转</b>
+      <p>GLB / STL / OBJ / PLY / USDZ 一键导出，iOS AR、3D 打印、网页嵌入全场景覆盖。</p>
+    </div>
+    <div class="feat" data-animate data-delay="160">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+      <b>骨骼动画播放</b>
+      <p>多轨道动画切换、倍速、进度拖拽；内置示例模型，打开即看即学。</p>
+    </div>
+    <div class="feat" data-animate>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <b>毫米级打印标定</b>
+      <p>按目标宽度精确导出 STL，打印店拿到的尺寸与预览一致，改稿零来回。</p>
+    </div>
+    <div class="feat" data-animate data-delay="80">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <b>零安装，打开即用</b>
+      <p>无注册、无下载、无插件。发一个链接，对方点开就能用。</p>
+    </div>
+    <div class="feat" data-animate data-delay="160">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <b>三源 CDN 容灾</b>
+      <p>jsdelivr / fastly / unpkg 自动切换，字体 IndexedDB 本地缓存，断网也能用。</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <b>3D 创作工具箱</b> · three.js r160 · glTF 2.0<br/>
+  runs entirely in your browser · no upload · files never leave your device
+</footer>
+
+<div class="cdn-fail" id="cdn-fail">
+  <div class="cdn-fail-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <h3>无法加载 3D 引擎</h3>
+    <p>所有 CDN 源均不可达（jsdelivr / fastly / unpkg）<br/>请检查网络连接后刷新重试</p>
+  </div>
+</div>
+
+<script>
+/* 导航滚动态 + IntersectionObserver 滚动入场（apple-clone 同款机制） */
+(function(){
+  var nav = document.getElementById('nav');
+  function updNav(){ nav.classList.toggle('scrolled', window.scrollY > 10); }
+  window.addEventListener('scroll', updNav, { passive:true }); updNav();
+  var els = document.querySelectorAll('[data-animate]');
+  if('IntersectionObserver' in window){
+    var ob = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){
+          var d = parseInt(en.target.getAttribute('data-delay') || '0', 10);
+          setTimeout(function(){ en.target.classList.add('animated'); }, d);
+          ob.unobserve(en.target);
+        }
+      });
+    }, { threshold:0.15, rootMargin:'0px 0px -50px 0px' });
+    els.forEach(function(el){ ob.observe(el); });
+  } else {
+    els.forEach(function(el){ el.classList.add('animated'); });
+  }
+})();
+</script>
 
 <script>
 /* CDN 容灾引导：jsdelivr → fastly 镜像 → unpkg 逐源探测，选中后注入 importmap 再执行主代码 */
@@ -193,7 +349,7 @@ import * as THREE from 'three';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
-/* ---------- 卡片 live 3D 迷你渲染（轻量：无环境贴图，三灯 + 自转） ---------- */
+/* ---------- 迷你渲染器工厂（三块 live 画布共享 tick） ---------- */
 function miniScene(canvas){
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -217,15 +373,56 @@ function miniScene(canvas){
   return { renderer, scene, camera, holder };
 }
 
-/* 卡片一：旋转的 "3D" 立体字（字体加载失败降级为方块） */
+/* Hero 主舞台：金色"3D"立体字 + 小鸭子同场缓转 */
+const hero = miniScene(document.getElementById('cvHero'));
+new FontLoader().load(window.__CDN_OK + '/examples/fonts/helvetiker_bold.typeface.json', font => {
+  const geo = new TextGeometry('3D', { font, size: 1.15, height: 0.45, curveSegments: 6, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.045, bevelSegments: 3 });
+  geo.center();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xFFD21F, roughness: 0.28, metalness: 0.65 }));
+  mesh.position.set(-0.85, 0.42, 0);
+  hero.holder.add(mesh);
+}, undefined, () => {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 0.7), new THREE.MeshStandardMaterial({ color: 0xFFD21F, roughness: 0.3, metalness: 0.6 }));
+  mesh.position.set(-0.85, 0.42, 0);
+  hero.holder.add(mesh);
+});
+{
+  const duck = new THREE.Group();
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xFFD21F, roughness: 0.55 });
+  const orange = new THREE.MeshStandardMaterial({ color: 0xFF8F00, roughness: 0.5 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x212121, roughness: 0.35 });
+  const part = (geo, mat, pos, rot, scl) => {
+    const m = new THREE.Mesh(geo, mat);
+    if(pos) m.position.set(...pos);
+    if(rot) m.rotation.set(...rot);
+    if(scl) m.scale.set(...scl);
+    duck.add(m);
+  };
+  part(new THREE.SphereGeometry(1, 28, 20), yellow, [0, 0, -0.15], null, [1.05, 0.82, 1.25]);
+  part(new THREE.ConeGeometry(0.3, 0.6, 18), yellow, [0, 0.42, -1.3], [-0.7, 0, 0], null);
+  part(new THREE.SphereGeometry(0.52, 28, 20), yellow, [0, 0.98, 0.82], null, null);
+  part(new THREE.SphereGeometry(0.26, 20, 14), orange, [0, 0.92, 1.32], null, [1.05, 0.32, 1.25]);
+  part(new THREE.SphereGeometry(0.22, 20, 14), orange, [0, 0.8, 1.28], null, [0.95, 0.28, 1.1]);
+  part(new THREE.SphereGeometry(0.065, 14, 10), dark, [0.21, 1.1, 1.2], null, null);
+  part(new THREE.SphereGeometry(0.065, 14, 10), dark, [-0.21, 1.1, 1.2], null, null);
+  part(new THREE.SphereGeometry(0.5, 20, 14), yellow, [0.92, 0.12, -0.25], [0, 0, -0.28], [0.32, 0.5, 0.85]);
+  part(new THREE.SphereGeometry(0.5, 20, 14), yellow, [-0.92, 0.12, -0.25], [0, 0, 0.28], [0.32, 0.5, 0.85]);
+  part(new THREE.BoxGeometry(0.42, 0.12, 0.62), orange, [0.42, -0.86, 0.18], null, null);
+  part(new THREE.BoxGeometry(0.42, 0.12, 0.62), orange, [-0.42, -0.86, 0.18], null, null);
+  duck.scale.setScalar(0.52);
+  duck.position.set(1.35, -0.28, 0.4);
+  hero.holder.add(duck);
+}
+
+/* 卡片一：旋转的 "3D" 蓝色立体字（字体失败降级方块） */
 const t = miniScene(document.getElementById('cvText'));
 new FontLoader().load(window.__CDN_OK + '/examples/fonts/helvetiker_bold.typeface.json', font => {
   const geo = new TextGeometry('3D', { font, size: 1.15, height: 0.45, curveSegments: 6, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.045, bevelSegments: 3 });
   geo.center();
-  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x2563EB, roughness: 0.35, metalness: 0.15 }));
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x2997FF, roughness: 0.32, metalness: 0.2 }));
   t.holder.add(mesh);
 }, undefined, () => {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 0.7), new THREE.MeshStandardMaterial({ color: 0x2563EB, roughness: 0.35 }));
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 0.7), new THREE.MeshStandardMaterial({ color: 0x2997FF, roughness: 0.32 }));
   t.holder.add(mesh);
 });
 
@@ -258,13 +455,17 @@ const v = miniScene(document.getElementById('cvViewer'));
   v.holder.add(duck);
 }
 
+/* 共享渲染循环：Hero 缓慢自转，卡片匀速自转 + 轻微浮动 */
 function tick(){
   requestAnimationFrame(tick);
   const s = performance.now() / 1000;
+  hero.holder.rotation.y = s * 0.22;
+  hero.holder.position.y = Math.sin(s * 0.9) * 0.05;
   t.holder.rotation.y = s * 0.55;
   t.holder.position.y = Math.sin(s * 1.4) * 0.06;
   v.holder.rotation.y = s * 0.7;
   v.holder.position.y = Math.sin(s * 1.2) * 0.05;
+  hero.renderer.render(hero.scene, hero.camera);
   t.renderer.render(t.scene, t.camera);
   v.renderer.render(v.scene, v.camera);
 }
