@@ -6,3 +6,6 @@
 # 临时
 *.log
 node_modules/
+# 发布流程临时凭证（勿提交）
+sts-creds.json
+sts-creds.sh
